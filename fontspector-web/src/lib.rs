@@ -86,6 +86,9 @@ fn register_profiles<'a>() -> Registry<'a> {
             .register_profile(name, profile, true)
             .expect("Couldn't register profile, fontspector bug");
     }
+    profile_dogray::Dogray
+        .register(&mut registry)
+        .expect("Couldn't register Dogray profile, fontspector bug");
     registry
 }
 

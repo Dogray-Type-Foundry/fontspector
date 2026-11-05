@@ -11,6 +11,7 @@ use skrifa::{
         tables::{
             colr::Paint,
             glyf::Glyph::{Composite, Simple},
+            gpos::PositionSubtables,
         },
         TableProvider,
     },
@@ -28,6 +29,11 @@ use skrifa::{
 
         Any glyphs not accessible by these means are redundant and serve only
         to increase the font's file size.
+
+        Profiles can set the `MARK_ATTACHMENT_IS_REACHABLE` configuration option
+        to also treat glyphs that take part in GPOS mark attachment (mark-to-base,
+        mark-to-ligature and mark-to-mark) as reachable, since such combining
+        marks have a use in the font even without a codepoint.
     "#,
     proposal = "https://github.com/fonttools/fontbakery/issues/3160",
     title = "Check font contains no unreachable glyphs",
@@ -118,6 +124,48 @@ fn unreachable_glyphs(t: &Testable, context: &Context) -> CheckFnResult {
             Composite(composite) => {
                 for component in composite.components() {
                     glyphs.remove(&component.glyph.into());
+                }
+            }
+        }
+    }
+
+    // Optionally, marks used in GPOS mark attachment
+    let marks_reachable = context
+        .local_config("unreachable_glyphs")
+        .get("MARK_ATTACHMENT_IS_REACHABLE")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    if marks_reachable {
+        if let Ok(gpos) = f.font().gpos() {
+            for subtables in gpos
+                .lookup_list()?
+                .lookups()
+                .iter()
+                .flatten()
+                .flat_map(|l| l.subtables())
+            {
+                let coverages = match subtables {
+                    PositionSubtables::MarkToBase(st) => st
+                        .iter()
+                        .flatten()
+                        .map(|t| t.mark_coverage())
+                        .collect::<Vec<_>>(),
+                    PositionSubtables::MarkToLig(st) => st
+                        .iter()
+                        .flatten()
+                        .map(|t| t.mark_coverage())
+                        .collect(),
+                    PositionSubtables::MarkToMark(st) => st
+                        .iter()
+                        .flatten()
+                        .flat_map(|t| [t.mark1_coverage(), t.mark2_coverage()])
+                        .collect(),
+                    _ => vec![],
+                };
+                for coverage in coverages.into_iter().flatten() {
+                    for gid in coverage.iter() {
+                        glyphs.remove(&GlyphId::from(gid));
+                    }
                 }
             }
         }

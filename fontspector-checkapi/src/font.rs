@@ -1,5 +1,5 @@
 use crate::{
-    constants::{OutlineType, RIBBI_STYLE_NAMES, STATIC_STYLE_NAMES},
+    constants::{OutlineType, EXTRA_STATIC_STYLE_NAMES, RIBBI_STYLE_NAMES, STATIC_STYLE_NAMES},
     error::FontspectorError,
     filetype::FileTypeConvert,
     Context, FileType, Testable,
@@ -116,7 +116,7 @@ impl TestFont<'_> {
             }
         }
         if let Some(style_part) = self.filename.file_stem()?.to_str()?.split('-').next_back() {
-            for styles in STATIC_STYLE_NAMES.iter() {
+            for styles in STATIC_STYLE_NAMES.iter().chain(EXTRA_STATIC_STYLE_NAMES.iter()) {
                 if style_part == styles.replace(" ", "") {
                     return Some(style_part);
                 }

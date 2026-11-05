@@ -36,7 +36,7 @@ const AVG_CHAR_WEIGHTS: [(char, u32); 27] = [
 #[check(
     id = "opentype/xavgcharwidth",
     proposal = "https://github.com/fonttools/fontbakery/issues/4829",
-    title = "Checking OS/2 fsSelection value.",
+    title = "Check that OS/2.xAvgCharWidth is correct.",
     hotfix = fix_xavgcharwidth,
     rationale = "
         The OS/2.xAvgCharWidth field is used to calculate the width of a string of

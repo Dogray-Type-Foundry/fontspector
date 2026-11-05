@@ -89,7 +89,7 @@ function initDropzone() {
         <div class="container">
           <div class="row justify-content-between">
             <div class="align-self-center mx-auto rounded pt-0 pl-3 pr-3 bg-modal shadow-lg">
-              <img src="/Fontspector.svg" class="mx-auto d-block img-fluid " />
+              <h1 class="start-title">Dogray <span>Font Inspector</span></h1>
               <div id="dropzone-container">
                 <div class="dropzone" ref="dropzoneElement">
                   <div class="dz-message">Drop your fonts here.</div>
@@ -99,7 +99,7 @@ function initDropzone() {
                 <div class="row">
                   <div class="col">
                     <h6>Log levels</h6>
-                    <select class="custom-select" v-model="state.logLevel">
+                    <select class="form-select form-select-sm w-auto" v-model="state.logLevel">
                       <option value="PASS">PASS</option>
                       <option value="INFO">INFO</option>
                       <option value="WARN">WARN</option>
@@ -138,8 +138,7 @@ function initDropzone() {
                 </div>
                 <div class="mx-auto mt-2 mb-0 text-muted text-center">
                   <p>
-                    <small>No files are uploaded; fonts stay on your browser. Always runs the latest Fontspector
-                      release.</small>
+                    <small>No files are uploaded; your fonts stay in your browser.</small>
                   </p>
                 </div>
                 <div v-if="!state.loading" class="mx-auto mt-2 mb-0 text-center">
@@ -147,9 +146,6 @@ function initDropzone() {
                     <button class="btn btn-outline-primary" @click="state.view = 'listChecks'">
                       List all checks
                     </button>
-                  </p>
-                  <p>
-                    <a href="https://github.com/fonttools/fontspector/issues">Report issues or ideas on Github</a>
                   </p>
                 </div>
               </div>
@@ -163,25 +159,37 @@ function initDropzone() {
 
 <style>
 .bg-modal {
-  background-color: #ebebeb;
+  background-color: var(--bs-tertiary-bg);
 }
 
-[data-bs-theme=dark] .bg-modal {
-  background-color: #2c2c2c;
+.start-title {
+  text-align: center;
+  font-weight: 700;
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  letter-spacing: -.02em;
+  color: var(--bs-primary);
+  margin: 2.5rem 0 1.5rem;
+}
+
+.start-title span {
+  font-weight: 400;
+  color: var(--dogray-accent);
 }
 
 .dropzone {
-  border: none;
+  border: 2px dashed color-mix(in srgb, var(--dogray-accent) 60%, transparent);
   border-radius: 70px;
+  background-color: color-mix(in srgb, var(--dogray-accent) 8%, var(--bs-body-bg));
+  color: var(--bs-body-color);
+  min-height: 9rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  margin: 0 1rem;
 }
 
-[data-bs-theme=light] .dropzone {
-  background-color: rgba(193, 237, 252, 0.8)
-}
-
-[data-bs-theme=dark] .dropzone {
-  border: none;
-  border-radius: 70px;
-  background-color: rgba(5, 66, 86, 0.8)
+[data-bs-theme=dark] .start-title {
+  color: var(--bs-primary-text-emphasis);
 }
 </style>

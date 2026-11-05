@@ -8,6 +8,7 @@ members = [
     "fontspector-hotfix",
     "profile-adobe",
     "profile-fontwerk",
+    "profile-dogray",
     "profile-designspace",
     "profile-iso15008",
     "profile-microsoft",

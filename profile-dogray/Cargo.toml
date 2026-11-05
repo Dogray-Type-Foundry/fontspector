@@ -1,0 +1,23 @@
+[package]
+name = "fontspector-profile-dogray"
+version = "0.1.0"
+edition = "2021"
+description = "Fontspector checks and profile for Dogray fonts"
+publish = false
+
+[dependencies]
+fontspector-checkapi = { path = "../fontspector-checkapi", features = [
+    "kurbo",
+], version = "1.0.0" }
+skrifa = { workspace = true }
+write-fonts = { workspace = true }
+serde_json = { workspace = true }
+kurbo = { workspace = true }
+google-fonts-languages = "0"
+google-fonts-glyphsets = { version = "1.1.0", git = "https://github.com/googlefonts/glyphsets" }
+profile-adobe = { path = "../profile-adobe", package = "fontspector-profile-adobe" }
+profile-microsoft = { path = "../profile-microsoft", package = "fontspector-profile-microsoft" }
+unicode-normalization = "0.1"
+
+[lints]
+workspace = true

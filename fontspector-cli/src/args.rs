@@ -11,7 +11,7 @@ pub struct Args {
     pub plugin: Vec<String>,
 
     /// Profile to check
-    #[clap(short, long, default_value = "universal")]
+    #[clap(short, long, default_value = "dogray")]
     pub profile: String,
 
     /// List the checks available in the selected profile

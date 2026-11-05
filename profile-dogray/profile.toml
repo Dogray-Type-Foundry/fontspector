@@ -1,0 +1,231 @@
+#:schema ../resources/profile.schema.json
+# Dogray profile: an explicit copy of the Universal profile (including the
+# OpenType checks it inherits), customized from the 2026-11-05 triage.
+# Dogray-specific checks are implemented in this crate (src/checks).
+
+[sections]
+"Dogray Checks" = [
+    "dogray/vertical_metrics",
+    "dogray/mac_names",
+    "dogray/currency_symbols",
+    "dogray/consistent_family_name",
+    "dogray/family_and_style_max_length",
+    "dogray/postscript_name_hyphen",
+    "dogray/duplicated_names",
+    "dogray/style_linking",
+    "dogray/os2_cap_and_x_height",
+    "dogray/os2_ranges_match_cmap",
+    "dogray/expected_features",
+    "dogray/languagesystems",
+    "dogray/gdef_spacing_glyphs_not_marks",
+    "dogray/unreasonable_vmtx",
+    "dogray/valid_underline",
+    "dogray/valid_strikeout",
+    "dogray/character_sets",
+    "dogray/fstype",
+    "dogray/valid_nameid25",
+    "dogray/equal_codepoint_coverage",
+]
+"From Other Profiles" = [
+    "adobefonts/family/consistent_upm",
+    "adobefonts/nameid_1_win_english",
+    "adobefonts/unsupported_tables",
+    "name_length_req",
+]
+"Universal Profile Checks" = [
+    "arabic_high_hamza",
+    "arabic_spacing_symbols",
+    "base_has_width",
+    "case_mapping",
+    "cmap/format_12",
+    "color_cpal_brightness",
+    "control_chars",
+    "empty_glyph_on_gid1_for_colrv0",
+    "colr_glyph_entry_with_no_layers",
+    "empty_letters",
+    "family/uniqueness_first_31_characters",
+    "fontdata_namecheck",
+    "freetype_rasterizer",
+    "fvar_instance_ps_names",
+    "fvar_name_entries",
+    "gpos7",
+    "gpos_kerning_info",
+    "integer_ppem_if_hinted",
+    "interpolation_issues",
+    "legacy_accents",
+    "mandatory_avar_table",
+    "mandatory_glyphs",
+    "math_signs_width",
+    "missing_small_caps_glyphs",
+    "name/char_restrictions",
+    "name/italic_names",
+    "name/trailing_spaces",
+    "name/repeating_characters",
+    "nested_components",
+    "required_tables",
+    "sfnt_version",
+    "smallcaps_before_ligatures",
+    "adobefonts/STAT_strings",
+    "stylisticset_description",
+    "tabular_kerning",
+    "transformed_components",
+    "unique_glyphnames",
+    "unreachable_glyphs",
+    "no_vert_and_vrt2",
+    "unwanted_aat_tables",
+    "unwanted_tables",
+    "dsig",
+    "valid_glyphnames",
+    "varfont/consistent_axes",
+    "varfont/duplexed_axis_reflow",
+    "varfont/instances_in_order",
+    "varfont/unsupported_axes",
+    "vtt_volt_data",
+    "whitespace_glyphs",
+    "whitespace_ink",
+    "whitespace_widths",
+    "has_features",
+    "universal/required_name_ids",
+    "suspicious_sidebearings",
+    "overlaps_bit",
+]
+"Opentype Specification Checks" = [
+    "opentype/caret_slope",
+    "opentype/family/bold_italic_unique_for_nameid1",
+    "opentype/family/unique_names",
+    "opentype/family/equal_font_versions",
+    "opentype/family/max_4_fonts_per_family_name",
+    "opentype/family_naming_recommendations",
+    "opentype/family/panose_familytype",
+    "opentype/family/underline_thickness",
+    "opentype/font_version",
+    "opentype/fsselection",
+    "opentype/fsselection_wws",
+    "opentype/fvar/axis_ranges_correct",
+    "opentype/fvar/registered_axis_tags",
+    "opentype/fvar/regular_coords_correct",
+    "opentype/fvar/valid_range",
+    "opentype/GDEF_mark_chars",
+    "opentype/GDEF_non_mark_chars",
+    "opentype/GDEF_spacing_marks",
+    "opentype/glyf_non_transformed_duplicate_components",
+    "opentype/glyf_unused_data",
+    "opentype/italic_angle",
+    "opentype/layout_valid_feature_tags",
+    "opentype/layout_valid_language_tags",
+    "opentype/layout_valid_script_tags",
+    "opentype/loca/maxp_num_glyphs",
+    "opentype/mac_style",
+    "opentype/maxp_version",
+    "opentype/maxadvancewidth",
+    "opentype/monospace",
+    "opentype/name/empty_records",
+    "opentype/name/match_familyname_fullfont",
+    "opentype/name/postscript_name_consistency",
+    "opentype/name/postscript_vs_cff",
+    "opentype/points_out_of_bounds",
+    "opentype/postscript_name",
+    "opentype/post_table_version",
+    "opentype/slant_direction",
+    "opentype/STAT/ital_axis",
+    "opentype/unitsperem",
+    "opentype/varfont/distinct_instance_records",
+    "opentype/varfont/family_axis_ranges",
+    "opentype/varfont/foundry_defined_tag_name",
+    "opentype/varfont/same_size_instance_records",
+    "opentype/varfont/STAT_axis_record_for_each_axis",
+    "opentype/varfont/valid_default_instance_nameids",
+    "opentype/varfont/valid_nameids",
+    "opentype/weight_class_fvar",
+    "opentype/xavgcharwidth",
+    "opentype/hmtx_cff_num_glyphs",
+]
+
+# Removed in triage:
+#   alt_caron
+#   cjk_chws_feature
+#   cjk_not_enough_glyphs
+#   contour_count
+#   file_size
+#   hinting_impact
+#   ligature_carets
+#   name/no_copyright_on_description
+#   smart_dropout
+#   soft_hyphen
+#   STAT_in_statics
+#   field_values
+#   has_glyphs
+#   has_unicodes
+#   opentype/vendor_id
+# Replaced by Dogray checks:
+#   family/win_ascent_and_descent -> dogray/vertical_metrics
+#   linegaps -> dogray/vertical_metrics
+#   os2_metrics_match_hhea -> dogray/vertical_metrics
+#   typoascender_exceeds_Agrave -> dogray/vertical_metrics
+#   no_mac_entries -> dogray/mac_names
+#   rupee -> dogray/currency_symbols
+#   opentype/family/consistent_family_name -> dogray/consistent_family_name
+#   name/family_and_style_max_length -> dogray/family_and_style_max_length
+#   typographic_family_name -> dogray/consistent_family_name (same comparison)
+#   family/vertical_metrics -> dogray/vertical_metrics (its "Same values in every font" row)
+#   opentype/code_pages -> dogray/os2_ranges_match_cmap
+# Ported from the Google Fonts profile with neutral wording:
+#   googlefonts/fstype -> dogray/fstype (WARN)
+#   googlefonts/metadata/valid_nameid25 -> dogray/valid_nameid25
+#   googlefonts/family/equal_codepoint_coverage -> dogray/equal_codepoint_coverage
+
+# Severity changes
+[[overrides."math_signs_width"]]
+code = "width-outliers"
+status = "INFO"
+reason = "Dogray: informational only"
+[[overrides."dsig"]]
+code = "found-DSIG"
+status = "INFO"
+reason = "Dogray: only inform when a DSIG table is present"
+[[overrides."varfont/unsupported_axes"]]
+code = "unsupported-ital"
+status = "INFO"
+reason = "Dogray: informational only"
+
+# Relaxed to WARN, as in the Adobe Fonts profile
+[[overrides."whitespace_glyphs"]]
+code = "missing-whitespace-glyph-0x00A0"
+status = "WARN"
+reason = "Dogray: relaxed to a warning, as Adobe Fonts does"
+[[overrides."valid_glyphnames"]]
+code = "found-invalid-names"
+status = "WARN"
+reason = "Dogray: relaxed to a warning, as Adobe Fonts does"
+[[overrides."opentype/name/match_familyname_fullfont"]]
+code = "mismatch-font-names"
+status = "WARN"
+reason = "Dogray: relaxed to a warning, as Adobe Fonts does"
+[[overrides."opentype/fvar/regular_coords_correct"]]
+code = "no-regular-instance"
+status = "WARN"
+reason = "Dogray: relaxed to a warning, as Adobe Fonts does"
+[[overrides."opentype/varfont/valid_default_instance_nameids"]]
+code = "invalid-default-instance-subfamily-name"
+status = "WARN"
+reason = "Dogray: relaxed to a warning, as Adobe Fonts does"
+[[overrides."opentype/varfont/valid_default_instance_nameids"]]
+code = "invalid-default-instance-postscript-name"
+status = "WARN"
+reason = "Dogray: relaxed to a warning, as Adobe Fonts does"
+[[overrides."opentype/weight_class_fvar"]]
+code = "bad-weight-class"
+status = "WARN"
+reason = "Dogray: relaxed to a warning, as Adobe Fonts does"
+
+# Name IDs every font must have (from TTF's name/windows_records and name/designer_name)
+[configuration_defaults."universal/required_name_ids"]
+required_name_ids = [1, 2, 3, 4, 5, 6, 9]
+
+# Dogray never adds STAT tables to static fonts
+[configuration_defaults."opentype/STAT/ital_axis"]
+IGNORE_STATIC_FONTS = true
+
+# Combining marks used in GPOS mark attachment count as reachable
+[configuration_defaults.unreachable_glyphs]
+MARK_ATTACHMENT_IS_REACHABLE = true

@@ -215,6 +215,9 @@ fn check_ital_is_binary_and_last(t: &TestFont, is_italic: bool) -> Result<Vec<St
         as a mechanism for selecting between two linked variable font files.
 
         Also, the axis value name for uprights must be set as elidable.
+
+        Profiles that never add STAT tables to static fonts can set the
+        `IGNORE_STATIC_FONTS` configuration option to only check variable fonts.
     ",
     proposal = "https://github.com/fonttools/fontbakery/issues/2934",
     proposal = "https://github.com/fonttools/fontbakery/issues/3668",
@@ -222,8 +225,22 @@ fn check_ital_is_binary_and_last(t: &TestFont, is_italic: bool) -> Result<Vec<St
     implementation = "all",
     title = "Ensure Fonts have 'ital' STAT axis."
 )]
-fn ital_axis(c: &TestableCollection, _context: &Context) -> CheckFnResult {
-    let fonts = TTF.from_collection(c);
+fn ital_axis(c: &TestableCollection, context: &Context) -> CheckFnResult {
+    let mut fonts = TTF.from_collection(c);
+    let ignore_static = context
+        .local_config("opentype/STAT/ital_axis")
+        .get("IGNORE_STATIC_FONTS")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    if ignore_static {
+        fonts.retain(|f| f.is_variable_font());
+        if fonts.is_empty() {
+            return Ok(Status::just_one_skip(
+                "no-variable-fonts",
+                "No variable fonts to check.",
+            ));
+        }
+    }
 
     for font in fonts.iter() {
         if font.has_table(b"gvar") && !font.has_table(b"STAT") {

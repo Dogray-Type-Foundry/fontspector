@@ -10,10 +10,12 @@
             <Navbar />
 
             <!-- Classic View Content -->
-            <ClassicView v-if="state.view === 'classic'" />
+            <div v-if="state.view === 'classic'" class="classic-scroll">
+                <ClassicView />
+            </div>
 
-            <!-- Problem View Content -->
-            <ProblemView v-if="state.view === 'problem'" />
+            <!-- Pane-based report view -->
+            <PaneView v-if="state.view === 'problem'" />
         </div>
 
         <ListChecks v-if="state.view === 'listChecks'" />
@@ -23,7 +25,7 @@
 
 <script setup lang="ts">
 import { state, updateResults, resetState } from '../store';
-import ProblemView from './ProblemView.vue';
+import PaneView from './PaneView.vue';
 import StartModal from './StartModal.vue';
 import ErrorModal from './ErrorModal.vue';
 import ListChecks from './ListChecks.vue';
@@ -62,7 +64,7 @@ fbWorker.onmessage = (event: any) => {
             const url = URL.createObjectURL(zipBlob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'fontspector-fix.zip';
+            a.download = 'dogray-font-inspector-fixes.zip';
             a.click();
         }
         // Rerun the tests
@@ -104,3 +106,17 @@ fbWorker.onmessage = (event: any) => {
 };
 
 </script>
+
+<style>
+#results-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+.classic-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+</style>

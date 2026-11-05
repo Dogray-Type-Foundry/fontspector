@@ -1,4 +1,5 @@
 use fontspector_checkapi::{Profile, ProfileProvider, Registry};
+use profile_dogray::Dogray;
 use profile_fontwerk::Fontwerk;
 use profile_googlefonts::GoogleFonts;
 use profile_iso15008::Iso15008;
@@ -73,4 +74,8 @@ pub(crate) fn register_core_profiles(args: &Args, registry: &mut Registry<'stati
     Monotype
         .register(registry)
         .expect("Couldn't register monotype profile, fontspector bug");
+    #[allow(clippy::expect_used)] // If this fails, I *want* to panic
+    Dogray
+        .register(registry)
+        .expect("Couldn't register dogray profile, fontspector bug");
 }

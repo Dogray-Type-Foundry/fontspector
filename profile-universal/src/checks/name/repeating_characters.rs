@@ -15,6 +15,8 @@ use skrifa::raw::TableProvider;
         PASS: [a-z, A-Z, 0-9]
 
         config: name_ids_to_be_checked or name_ids_to_be_skipped
+
+        The double slash in web addresses (\"://\") is not counted as a repeat.
     ",
     proposal = "https://github.com/Monotype/fontspector/issues/11",
     title = "Are there duplicate characters in the NAME table?"
@@ -90,7 +92,8 @@ fn repeating_characters(t: &Testable, context: &Context) -> CheckFnResult {
                 .string(name_table.string_data())
                 .map_err(|_| FontspectorError::General("Error reading string".to_string()))?
                 .to_string();
-            let repeated_chars = repeating_characters_in_a_row(&string_value);
+            // The "//" of a URL scheme (https://) is expected, not a typo
+            let repeated_chars = repeating_characters_in_a_row(&string_value.replace("://", ":/"));
 
             if !repeated_chars.is_empty() {
                 for c in repeated_chars.iter() {
@@ -174,8 +177,8 @@ mod tests {
 
     use fontspector_checkapi::{
         codetesting::{
-            assert_messages_contain, assert_pass, assert_results_contain, run_check,
-            run_check_with_config, test_able,
+            assert_messages_contain, assert_messages_dont_contain, assert_pass,
+            assert_results_contain, run_check, run_check_with_config, test_able,
         },
         StatusCode, Testable, TestableType,
     };
@@ -205,18 +208,11 @@ mod tests {
     }
 
     #[test]
-    fn test_repeating_characters_info() {
+    fn test_repeating_characters_url_slashes_tolerated() {
+        // Montserrat's vendor URL contains "https://"; that double slash is not a repeat.
         let testable = test_able("montserrat/Montserrat-Regular.ttf");
         let results = run_check(repeating_characters, testable);
-        assert_results_contain(
-            &results,
-            StatusCode::Info,
-            Some("repeated-characters-info".to_string()),
-        );
-        assert_messages_contain(
-            &results,
-            "Name table record 1/0/0/VENDOR_URL has repeated characters `/`",
-        );
+        assert_messages_dont_contain(&results, "VENDOR_URL has repeated characters `/`");
     }
 
     #[test]

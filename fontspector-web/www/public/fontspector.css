@@ -14,7 +14,7 @@
     }
 
     .modal-body {
-        background-color: rgb(193, 237, 252);
+        background-color: var(--bs-body-bg);
     }
 
     #test {

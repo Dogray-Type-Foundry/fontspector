@@ -5,6 +5,8 @@ import path from "path";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 
 export default defineConfig({
+  // Relative asset paths, so the build works from any folder (e.g. /inspector/)
+  base: "./",
   plugins: [
     vue(),
     viteStaticCopy({

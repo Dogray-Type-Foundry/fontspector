@@ -7,7 +7,7 @@ import { state } from '../store';
     <nav class="navbar navbar-expand-lg bg-navbar">
       <div class="container-fluid">
         <a class="leftarrow text-secondary text-decoration-none" href="#" @click.prevent="state.view = 'start'">←</a>
-        All the Fontspector Checks!
+        All checks
       </div>
     </nav>
     <div class="container">

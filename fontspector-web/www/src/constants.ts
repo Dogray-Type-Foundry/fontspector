@@ -42,15 +42,8 @@ export const SEVERITY_COLOR: Record<StatusCode, string> = Object.fromEntries(
 ) as Record<StatusCode, string>;
 
 export const PROFILES = {
+  dogray: "Dogray (customized Universal)",
   opentype: "OpenType (standards compliance)",
   universal: "Universal (community best practices)",
-  googlefonts: "Google Fonts",
-  iso15008: "ISO 15008 (in-car accessibility)",
   adobefonts: "Adobe Fonts",
-  fontbureau: "Font Bureau",
-  fontwerk: "Fontwerk",
-  microsoft: "Microsoft",
-  workspace: "Google Workspace",
-  typenetwork: "Type Network",
-  monotype: "Monotype",
 };
