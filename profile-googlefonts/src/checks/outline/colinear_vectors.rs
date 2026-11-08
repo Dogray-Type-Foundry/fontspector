@@ -2,7 +2,7 @@ use fontspector_checkapi::{prelude::*, skip, testfont, FileTypeConvert, Metadata
 use itertools::Itertools;
 use serde_json::json;
 
-use crate::checks::outline::name_and_bezglyph;
+use crate::checks::outline::{name_and_bezglyph, pt};
 
 const COLINEAR_EPSILON: f64 = 0.1; // Radians
 
@@ -12,16 +12,6 @@ struct ColinearWarning {
     p0: kurbo::Point,
     p1: kurbo::Point,
     p2: kurbo::Point,
-}
-
-impl std::fmt::Display for ColinearWarning {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}: from {:?} to {:?} is colinear with segment from {:?} to {:?}",
-            self.glyph_name, self.p0, self.p1, self.p1, self.p2
-        )
-    }
 }
 
 #[check(
@@ -74,8 +64,15 @@ fn colinear_vectors(t: &Testable, context: &Context) -> CheckFnResult {
         let mut status = Status::warn(
             "found-colinear-vectors",
             &format!(
-                "The following glyphs have colinear vectors:\n\n{}",
-                bullet_list(context, all_warnings.iter().map(|w| w.to_string()))
+                "Redundant on-curve points: the lines on either side point the same way, so the point can be removed ({}):\n\n{}",
+                all_warnings.len(),
+                markdown_table(
+                    context,
+                    &["Glyph", "Point", "Between"],
+                    all_warnings
+                        .iter()
+                        .map(|w| vec![w.glyph_name.clone(), pt(w.p1), format!("{} and {}", pt(w.p0), pt(w.p2))])
+                )
             ),
         );
         for warning in all_warnings {

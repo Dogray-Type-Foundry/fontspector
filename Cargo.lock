@@ -1634,9 +1634,12 @@ dependencies = [
  "fontspector-profile-microsoft",
  "google-fonts-glyphsets",
  "google-fonts-languages",
+ "harfrust",
  "kurbo 0.13.1",
  "serde_json",
  "skrifa",
+ "unicode-bidi-mirroring",
+ "unicode-joining-type",
  "unicode-normalization",
  "write-fonts",
 ]
@@ -5478,6 +5481,12 @@ dependencies = [
  "tracing",
  "write-fonts",
 ]
+
+[[package]]
+name = "unicode-bidi-mirroring"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5dfa6e8c60bb66d49db113e0125ee8711b7647b5579dc7f5f19c42357ed039fe"
 
 [[package]]
 name = "unicode-canonical-combining-class"

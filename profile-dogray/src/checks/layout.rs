@@ -61,7 +61,7 @@ fn expected_features(t: &Testable, _context: &Context) -> CheckFnResult {
 }
 
 /// "script lang" pairs declared in a ScriptList.
-fn languagesystems(list: Result<ScriptList, ReadError>, out: &mut BTreeSet<String>) {
+pub(crate) fn languagesystems(list: Result<ScriptList, ReadError>, out: &mut BTreeSet<String>) {
     let Ok(list) = list else { return };
     for rec in list.script_records() {
         let script_tag = rec.script_tag().to_string().trim().to_string();

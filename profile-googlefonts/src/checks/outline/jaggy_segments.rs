@@ -1,4 +1,4 @@
-use crate::checks::outline::name_and_bezglyph;
+use crate::checks::outline::{name_and_bezglyph, pt, seg_ends, seg_kind, seg_span};
 use fontspector_checkapi::{prelude::*, skip, testfont, FileTypeConvert, Metadata};
 use itertools::Itertools;
 use kurbo::{ParamCurve, ParamCurveDeriv, PathSeg, Point, Vec2};
@@ -29,16 +29,6 @@ struct JaggyWarning {
     prev_seg: PathSeg,
     cur_seg: PathSeg,
     jag_angle_degrees: f64,
-}
-
-impl std::fmt::Display for JaggyWarning {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}: {:?}/{:?} = {} degrees",
-            self.glyph_name, self.prev_seg, self.cur_seg, self.jag_angle_degrees
-        )
-    }
 }
 
 #[check(
@@ -96,8 +86,22 @@ fn jaggy_segments(t: &Testable, context: &Context) -> CheckFnResult {
         let mut status = Status::warn(
             "found-jaggy-segments",
             &format!(
-                "The following glyphs have jaggy segments:\n\n{}",
-                bullet_list(context, all_warnings.iter().map(|w| w.to_string()))
+                "Jaggy joins, where two segments meet at a sharp angle (usually a kink or a stray point) ({}):\n\n{}",
+                all_warnings.len(),
+                markdown_table(
+                    context,
+                    &["Glyph", "At", "Angle", "Joins", "Segments"],
+                    all_warnings.iter().map(|w| {
+                        let (at, _) = seg_ends(&w.cur_seg);
+                        vec![
+                            w.glyph_name.clone(),
+                            pt(at),
+                            format!("{:.1}°", w.jag_angle_degrees),
+                            format!("{} → {}", seg_kind(&w.prev_seg), seg_kind(&w.cur_seg)),
+                            format!("{} then {}", seg_span(&w.prev_seg), seg_span(&w.cur_seg)),
+                        ]
+                    })
+                )
             ),
         );
         for warning in all_warnings {

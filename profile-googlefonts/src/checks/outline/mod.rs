@@ -43,3 +43,41 @@ pub(crate) fn name_and_bezglyph<'a>(
         (name, result.map(|_| pen))
     })
 }
+
+/// A coordinate without a pointless ".0" (470.0 -> "470", 39.5 -> "39.5").
+pub(crate) fn num(v: f64) -> String {
+    let rounded = (v * 100.0).round() / 100.0;
+    if rounded.fract() == 0.0 {
+        format!("{rounded:.0}")
+    } else {
+        format!("{rounded}")
+    }
+}
+
+/// "(x, y)"
+pub(crate) fn pt(p: kurbo::Point) -> String {
+    format!("({}, {})", num(p.x), num(p.y))
+}
+
+/// Start and end points of a segment.
+pub(crate) fn seg_ends(seg: &kurbo::PathSeg) -> (kurbo::Point, kurbo::Point) {
+    match seg {
+        kurbo::PathSeg::Line(line) => (line.p0, line.p1),
+        kurbo::PathSeg::Quad(quad) => (quad.p0, quad.p2),
+        kurbo::PathSeg::Cubic(cubic) => (cubic.p0, cubic.p3),
+    }
+}
+
+/// "line" or "curve"
+pub(crate) fn seg_kind(seg: &kurbo::PathSeg) -> &'static str {
+    match seg {
+        kurbo::PathSeg::Line(_) => "line",
+        _ => "curve",
+    }
+}
+
+/// "(x0, y0) → (x1, y1)"
+pub(crate) fn seg_span(seg: &kurbo::PathSeg) -> String {
+    let (a, b) = seg_ends(seg);
+    format!("{} → {}", pt(a), pt(b))
+}

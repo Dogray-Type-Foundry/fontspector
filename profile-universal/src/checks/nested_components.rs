@@ -50,12 +50,20 @@ fn nested_components(f: &Testable, context: &Context) -> CheckFnResult {
             }
         })
         .collect();
-    for (glyphid, composite) in composite_glyphs.iter() {
-        for component in composite.components() {
-            if composite_glyphs.contains_key(&component.glyph.into()) {
-                failures.push(font.glyph_name_for_id_synthesise(*glyphid));
-                break;
-            }
+    let mut sorted: Vec<_> = composite_glyphs.iter().collect();
+    sorted.sort_by_key(|(gid, _)| **gid);
+    for (glyphid, composite) in sorted {
+        let nested: Vec<String> = composite
+            .components()
+            .filter(|c| composite_glyphs.contains_key(&c.glyph.into()))
+            .map(|c| font.glyph_name_for_id_synthesise(GlyphId::from(c.glyph)))
+            .collect();
+        if !nested.is_empty() {
+            failures.push(vec![
+                font.glyph_name_for_id_synthesise(*glyphid),
+                nested.join(", "),
+                get_depth(*glyphid, &loca, &glyf).to_string(),
+            ]);
         }
     }
     if failures.is_empty() {
@@ -64,8 +72,13 @@ fn nested_components(f: &Testable, context: &Context) -> CheckFnResult {
         Ok(Status::just_one_fail(
             "found-nested-components",
             &format!(
-                "The following glyphs have components which are themselves component glyphs:\n\n{}",
-                bullet_list(context, failures)
+                "Glyphs with components that are themselves composite glyphs ({}):\n\n{}",
+                failures.len(),
+                markdown_table(
+                    context,
+                    &["Glyph", "Composite components", "Nesting depth"],
+                    failures
+                )
             ),
         ))
     }

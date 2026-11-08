@@ -150,11 +150,9 @@ fn unreachable_glyphs(t: &Testable, context: &Context) -> CheckFnResult {
                         .flatten()
                         .map(|t| t.mark_coverage())
                         .collect::<Vec<_>>(),
-                    PositionSubtables::MarkToLig(st) => st
-                        .iter()
-                        .flatten()
-                        .map(|t| t.mark_coverage())
-                        .collect(),
+                    PositionSubtables::MarkToLig(st) => {
+                        st.iter().flatten().map(|t| t.mark_coverage()).collect()
+                    }
                     PositionSubtables::MarkToMark(st) => st
                         .iter()
                         .flatten()
@@ -181,8 +179,9 @@ fn unreachable_glyphs(t: &Testable, context: &Context) -> CheckFnResult {
             .map(|gid| f.glyph_name_for_id_synthesise(*gid))
             .collect();
         let message = format!(
-            "The following glyphs could not be reached by codepoint or substitution rules:\n\n{}",
-            bullet_list(context, glyph_list.clone())
+            "Glyphs that can't be reached by codepoint, substitution rules or components ({}):\n\n{}",
+            glyph_list.len(),
+            inline_list(context, glyph_list.iter())
         );
         let mut status = Status::warn("unreachable-glyphs", &message);
         status.add_metadata(Metadata::FontProblem {

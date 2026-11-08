@@ -135,16 +135,40 @@ fn alignment_miss(t: &Testable, context: &Context) -> CheckFnResult {
         }
     }
     if !all_warnings.is_empty() {
+        // One row per point; lines sharing a height (ascender = cap-height) are merged.
+        let mut rows: Vec<(String, f32, f32, f32, Vec<String>)> = vec![];
+        for w in &all_warnings {
+            match rows
+                .iter_mut()
+                .find(|r| r.0 == w.glyph_name && r.1 == w.x && r.2 == w.y && r.3 == w.y_expected)
+            {
+                Some(row) => row.4.push(w.line.clone()),
+                None => rows.push((
+                    w.glyph_name.clone(),
+                    w.x,
+                    w.y,
+                    w.y_expected,
+                    vec![w.line.clone()],
+                )),
+            }
+        }
         let mut warn = Status::warn(
             "found-misalignments",
             &format!(
-                "The following glyphs have on-curve points which have potentially incorrect y coordinates:\n\n{}",
-                bullet_list(context, all_warnings.iter().map(|warning| {
-                    format!(
-                        "- {}: X={},Y={} (should be at {} {}?)",
-                        warning.glyph_name, warning.x, warning.y, warning.line, warning.y_expected
-                    )
-                }))
+                "On-curve points sitting just off a vertical metric line ({}):\n\n{}",
+                rows.len(),
+                markdown_table(
+                    context,
+                    &["Glyph", "Point", "Near", "Off by"],
+                    rows.iter().map(|(glyph, x, y, expected, lines)| {
+                        vec![
+                            glyph.clone(),
+                            format!("({x}, {y})"),
+                            format!("{} (y = {expected})", lines.join(", ")),
+                            format!("{:+}", y - expected),
+                        ]
+                    })
+                )
             ),
         );
         warn.metadata.extend(
@@ -186,7 +210,7 @@ mod tests {
             StatusCode::Warn,
             Some("found-misalignments".to_string()),
         );
-        assert_messages_contain(&results, "A (U+0041): X=3,Y=-2 (should be at baseline 0?)");
+        assert_messages_contain(&results, "| A (U+0041) | (3, -2) | baseline (y = 0) | -2 |");
     }
 
     #[test]

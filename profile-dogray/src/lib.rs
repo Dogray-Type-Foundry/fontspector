@@ -39,6 +39,10 @@ impl fontspector_checkapi::ProfileProvider for Dogray {
         cr.register_check(checks::fstype);
         cr.register_check(checks::valid_nameid25);
         cr.register_check(checks::equal_codepoint_coverage);
+        cr.register_check(checks::feature_parity);
+        cr.register_check(checks::arabic_joining);
+        cr.register_check(checks::arabic_support);
+        cr.register_check(checks::latin_locl);
 
         let profile = Profile::from_toml(include_str!("../profile.toml"))
             .map_err(|e| FontspectorError::General(format!("Invalid Dogray profile: {e}")))?;

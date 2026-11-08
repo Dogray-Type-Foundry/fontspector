@@ -293,7 +293,8 @@ impl Status {
         if let Some(override_) = overrides.iter().find(|x| Some(x.code.as_str()) == code) {
             self.severity = override_.status;
             self.message = Some(format!(
-                "{} (Overriden: {})",
+                // Own paragraph, so it doesn't end up inside a trailing table or list.
+                "{}\n\n*Overridden: {}*",
                 self.message
                     .clone()
                     .unwrap_or("No original message".to_string()),

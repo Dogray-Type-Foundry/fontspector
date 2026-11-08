@@ -478,14 +478,16 @@ impl Evaluation {
 
     fn table(&self) -> String {
         let mut out = String::from("| Requirement | Google Fonts | Dogray |\n|---|---|---|\n");
+        // Literal pipes (|yMin|) would split cells, so use U+2223 instead.
+        let cell = |s: &str| s.replace('|', "∣");
         for row in &self.rows {
             out.push_str(&format!(
                 "| {} | {} {} | {} {} |\n",
                 row.requirement,
                 row.google.symbol(),
-                row.google.detail,
+                cell(&row.google.detail),
                 row.dogray.symbol(),
-                row.dogray.detail
+                cell(&row.dogray.detail)
             ));
         }
         out

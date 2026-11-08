@@ -107,7 +107,7 @@ fn overlaps_bit(t: &Testable, context: &Context) -> CheckFnResult {
     };
 
     let mut problems = vec![];
-    let bit_should_be_set: Vec<_> = glyph_classification
+    let mut bit_should_be_set: Vec<_> = glyph_classification
         .iter()
         .filter_map(|(&gid, &problem)| {
             if problem == OverlapProblem::ShouldHaveButDoesNot {
@@ -117,7 +117,8 @@ fn overlaps_bit(t: &Testable, context: &Context) -> CheckFnResult {
             }
         })
         .collect();
-    let bit_should_be_clear: Vec<_> = glyph_classification
+    bit_should_be_set.sort_unstable();
+    let mut bit_should_be_clear: Vec<_> = glyph_classification
         .iter()
         .filter_map(|(&gid, &problem)| {
             if problem == OverlapProblem::HasButShouldNot {
@@ -127,18 +128,14 @@ fn overlaps_bit(t: &Testable, context: &Context) -> CheckFnResult {
             }
         })
         .collect();
+    bit_should_be_clear.sort_unstable();
     if !bit_should_be_set.is_empty() {
         problems.push(Status::warn(
             "no-overlaps-bit",
             &format!(
-                "The following glyphs have overlaps but the overlaps bit is not set:\n{}",
-                bullet_list(
-                    context,
-                    bit_should_be_set
-                        .iter()
-                        .map(|gid| name_for_gid(*gid))
-                        .collect::<Vec<_>>()
-                )
+                "Glyphs with overlapping contours whose OVERLAP_SIMPLE / OVERLAP_COMPOUND flag is not set ({}):\n\n{}",
+                bit_should_be_set.len(),
+                inline_list(context, bit_should_be_set.iter().map(|gid| name_for_gid(*gid)))
             ),
         ));
     }
@@ -146,13 +143,11 @@ fn overlaps_bit(t: &Testable, context: &Context) -> CheckFnResult {
         problems.push(Status::warn(
             "overlaps-bit-set",
             &format!(
-                "The following glyphs do not have overlaps but the overlaps bit is set:\n{}",
-                bullet_list(
+                "Glyphs with the overlap flag set but no overlapping contours ({}):\n\n{}",
+                bit_should_be_clear.len(),
+                inline_list(
                     context,
-                    bit_should_be_clear
-                        .iter()
-                        .map(|gid| name_for_gid(*gid))
-                        .collect::<Vec<_>>()
+                    bit_should_be_clear.iter().map(|gid| name_for_gid(*gid))
                 )
             ),
         ));

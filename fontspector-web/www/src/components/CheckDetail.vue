@@ -17,10 +17,45 @@ const findings = computed(() =>
 function findingHtml(f: Finding): string {
   let html = renderMarkdown(f.message);
   if (renderer.value && f.status.metadata && state.fonts[f.files[0]]) {
-    const [extra, suppress] = renderer.value(f.status.metadata, state.fonts[f.files[0]]);
-    html = suppress ? extra : html + extra;
+    try {
+      const [extra, suppress] = renderer.value(f.status.metadata, state.fonts[f.files[0]]);
+      html = suppress && extra ? extra : html + extra;
+    } catch (e) {
+      console.error(`Renderer for ${props.check.id} failed`, e);
+    }
   }
   return html;
+}
+
+/** Findings sharing a severity and code, whose messages differ from file to file. */
+interface FindingGroup {
+  key: string;
+  severity: Finding['severity'];
+  code: string | null;
+  variants: Finding[];
+  files: number;
+  /** Every message is one short line, so a File | Message table fits. */
+  compact: boolean;
+}
+
+const isShort = (msg: string) => !msg.trim().includes('\n') && msg.length <= 240;
+
+const groups = computed<FindingGroup[]>(() => {
+  const map = new Map<string, FindingGroup>();
+  for (const f of findings.value) {
+    const key = JSON.stringify([f.severity, f.code]);
+    if (!map.has(key)) map.set(key, { key, severity: f.severity, code: f.code, variants: [], files: 0, compact: true });
+    const g = map.get(key)!;
+    g.variants.push(f);
+    g.files += f.files.length;
+    g.compact &&= isShort(f.message);
+  }
+  return [...map.values()];
+});
+
+function fileSummary(files: string[]): string {
+  const names = files.map(baseName);
+  return names.length <= 3 ? names.join(', ') : `${names.slice(0, 3).join(', ')} +${names.length - 3} more`;
 }
 
 const multiFile = computed(() => props.check.results.length > 1);
@@ -79,20 +114,49 @@ function copyId() {
     </details>
 
     <section>
-      <h3>Findings <span class="count">{{ findings.length }}</span></h3>
-      <div v-for="f in findings" :key="f.key" class="finding" :class="`sev-${f.severity}`">
+      <h3>Findings <span class="count">{{ groups.length }}</span></h3>
+      <div v-for="g in groups" :key="g.key" class="finding" :class="`sev-${g.severity}`">
         <div class="finding-head">
-          <span class="sev-pill">{{ f.severity }}</span>
-          <code v-if="f.code" class="finding-code">{{ f.code }}</code>
+          <span class="sev-pill">{{ g.severity }}</span>
+          <code v-if="g.code" class="finding-code">{{ g.code }}</code>
+          <span v-if="g.variants.length > 1" class="finding-variants">{{ g.variants.length }} variants</span>
           <span v-if="multiFile" class="finding-files">
-            <template v-if="f.files.length === nFonts">All {{ f.files.length }} files</template>
-            <template v-else>{{ f.files.length }} of {{ nFonts }} files</template>
+            <template v-if="g.files === nFonts">All {{ g.files }} files</template>
+            <template v-else>{{ g.files }} of {{ nFonts }} files</template>
           </span>
         </div>
-        <div class="md" v-html="findingHtml(f)"></div>
-        <div v-if="multiFile && f.files.length < nFonts" class="file-chips">
-          <span v-for="file in f.files" :key="file" class="file-chip" :title="file">{{ baseName(file) }}</span>
-        </div>
+        <!-- One message -->
+        <template v-if="g.variants.length === 1">
+          <div class="md" v-html="findingHtml(g.variants[0])"></div>
+          <div v-if="multiFile && g.variants[0].files.length < nFonts" class="file-chips">
+            <span v-for="file in g.variants[0].files" :key="file" class="file-chip" :title="file">{{ baseName(file) }}</span>
+          </div>
+        </template>
+        <!-- Short messages that differ per file: one table -->
+        <table v-else-if="g.compact" class="variant-table">
+          <thead><tr><th>Files</th><th>Details</th></tr></thead>
+          <tbody>
+            <tr v-for="f in g.variants" :key="f.key">
+              <td class="vt-files">
+                <span v-for="file in f.files" :key="file" class="file-chip" :title="file">{{ baseName(file) }}</span>
+              </td>
+              <td class="md" v-html="findingHtml(f)"></td>
+            </tr>
+          </tbody>
+        </table>
+        <!-- Long messages that differ per file: one collapsible section each -->
+        <template v-else>
+          <details v-for="(f, i) in g.variants" :key="f.key" class="variant" :open="i === 0">
+            <summary>
+              <span class="variant-files">{{ fileSummary(f.files) }}</span>
+              <span class="variant-count">{{ f.files.length }} file{{ f.files.length === 1 ? '' : 's' }}</span>
+            </summary>
+            <div class="md" v-html="findingHtml(f)"></div>
+            <div v-if="f.files.length > 3" class="file-chips">
+              <span v-for="file in f.files" :key="file" class="file-chip" :title="file">{{ baseName(file) }}</span>
+            </div>
+          </details>
+        </template>
       </div>
     </section>
 
@@ -208,10 +272,192 @@ function copyId() {
 
 .md table {
   font-size: .82rem;
+  border-collapse: collapse;
+  margin: .5rem 0 .75rem;
+  display: block;
+  overflow-x: auto;
+  width: max-content;
+  max-width: 100%;
+  background: none;
+}
+
+.md th,
+.md td {
+  border: 1px solid var(--bs-border-color);
+  padding: .3rem .55rem;
+  vertical-align: top;
+  text-align: left;
+  background-color: var(--bs-body-bg);
+  color: var(--bs-body-color);
 }
 
 .md th {
   white-space: nowrap;
+  background-color: var(--bs-tertiary-bg);
+  font-weight: 600;
+}
+
+.md tbody tr:nth-child(even) td {
+  background: color-mix(in srgb, var(--bs-tertiary-bg) 55%, transparent);
+}
+
+.md code {
+  font-size: .95em;
+}
+
+.finding-variants {
+  font-size: .72rem;
+  padding: .05rem .45rem;
+  border-radius: 999px;
+  border: 1px solid var(--bs-border-color);
+  color: var(--bs-secondary-color);
+}
+
+.variant-table {
+  width: 100%;
+  font-size: .85rem;
+  border-collapse: collapse;
+  margin-top: 0;
+  background: none;
+}
+
+.variant-table th,
+.variant-table td {
+  background: none;
+  border: 0;
+  text-align: left;
+}
+
+.variant-table tr:nth-child(even) {
+  background: none;
+}
+
+.variant-table th {
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--bs-secondary-color);
+  font-weight: 600;
+  padding: .25rem .5rem;
+  border-bottom: 1px solid var(--bs-border-color);
+}
+
+.variant-table td {
+  padding: .4rem .5rem;
+  border-bottom: 1px solid var(--bs-border-color-translucent);
+  vertical-align: top;
+}
+
+.variant-table td.md p {
+  margin: 0;
+}
+
+.vt-files {
+  width: 34%;
+}
+
+.vt-files .file-chip {
+  display: inline-block;
+  margin: 0 .25rem .25rem 0;
+}
+
+.variant {
+  border-top: 1px solid var(--bs-border-color-translucent);
+  padding: .45rem 0;
+}
+
+.variant:first-of-type {
+  border-top: 0;
+}
+
+.variant summary {
+  cursor: pointer;
+  display: flex;
+  gap: .6rem;
+  align-items: baseline;
+  font-size: .85rem;
+  font-weight: 600;
+}
+
+.variant summary::before {
+  content: "▸";
+  color: var(--bs-secondary-color);
+}
+
+.variant[open] summary::before {
+  content: "▾";
+}
+
+.variant summary::-webkit-details-marker {
+  display: none;
+}
+
+.variant-count {
+  margin-left: auto;
+  font-weight: 400;
+  font-size: .75rem;
+  color: var(--bs-secondary-color);
+}
+
+.variant[open] summary {
+  margin-bottom: .45rem;
+}
+
+.gp-gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-top: .6rem;
+}
+
+.gp-card {
+  margin: 0;
+  width: 112px;
+  border: 1px solid var(--bs-border-color);
+  border-radius: .35rem;
+  padding: .35rem;
+  background: var(--bs-body-bg);
+}
+
+.gp-svg {
+  width: 100%;
+  height: 96px;
+  display: block;
+}
+
+.gp-ink {
+  fill: var(--bs-body-color);
+  fill-opacity: .18;
+  stroke: var(--bs-body-color);
+  stroke-width: 1.2px;
+  vector-effect: non-scaling-stroke;
+}
+
+.gp-mark {
+  fill: none;
+  stroke: var(--bs-danger, #ff6b6b);
+  stroke-width: 2px;
+  vector-effect: non-scaling-stroke;
+}
+
+.gp-card figcaption {
+  font-size: .7rem;
+  text-align: center;
+  margin-top: .2rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--bs-secondary-color);
+}
+
+.gp-count {
+  color: var(--bs-danger, #ff6b6b);
+}
+
+.gp-more {
+  font-size: .78rem;
+  color: var(--bs-secondary-color);
+  margin: .3rem 0 0;
 }
 
 .finding {

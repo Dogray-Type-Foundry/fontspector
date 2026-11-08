@@ -25,12 +25,23 @@
     "dogray/fstype",
     "dogray/valid_nameid25",
     "dogray/equal_codepoint_coverage",
+    "dogray/feature_parity",
+    "dogray/arabic_joining",
+    "dogray/arabic_support",
+    "dogray/latin_locl",
 ]
 "From Other Profiles" = [
     "adobefonts/family/consistent_upm",
     "adobefonts/nameid_1_win_english",
     "adobefonts/unsupported_tables",
     "name_length_req",
+    "outline_alignment_miss",
+    "outline_colinear_vectors",
+    "outline_direction",
+    "outline_jaggy_segments",
+    "outline_semi_vertical",
+    "outline_short_segments",
+    "overlapping_path_segments",
 ]
 "Universal Profile Checks" = [
     "arabic_high_hamza",
@@ -187,6 +198,30 @@ reason = "Dogray: only inform when a DSIG table is present"
 code = "unsupported-ital"
 status = "INFO"
 reason = "Dogray: informational only"
+
+# Outline checks: WARN only where the problem shows (kinks, overlapping
+# segments, wrong direction); heuristics for things that aren't objectively
+# wrong are INFO.
+[[overrides."outline_alignment_miss"]]
+code = "found-misalignments"
+status = "INFO"
+reason = "Dogray: near-miss alignments are often intentional"
+[[overrides."outline_alignment_miss"]]
+code = "skip-cap-x-height-alignment"
+status = "INFO"
+reason = "Dogray: informational only"
+[[overrides."outline_colinear_vectors"]]
+code = "found-colinear-vectors"
+status = "INFO"
+reason = "Dogray: a redundant point doesn't change the outline"
+[[overrides."outline_semi_vertical"]]
+code = "found-semi-vertical"
+status = "INFO"
+reason = "Dogray: nearly vertical/horizontal lines are often by design"
+[[overrides."outline_short_segments"]]
+code = "found-short-segments"
+status = "INFO"
+reason = "Dogray: short segments are often by design"
 
 # Relaxed to WARN, as in the Adobe Fonts profile
 [[overrides."whitespace_glyphs"]]

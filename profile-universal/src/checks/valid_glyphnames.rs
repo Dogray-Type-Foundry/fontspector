@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 
 use fontspector_checkapi::{prelude::*, skip, testfont, FileTypeConvert, Metadata, SourceFile};
-use itertools::Itertools;
 use serde_json::json;
 use skrifa::{
     raw::{types::Version16Dot16, TableProvider},
@@ -30,6 +29,37 @@ fn test_glyph_name(s: &str, allowed_special_chars: Vec<char>) -> NameValidity {
         return NameValidity::Long;
     }
     NameValidity::OK
+}
+
+/// Why a glyph name breaks the naming rules, in words.
+fn naming_problem(name: &str, allowed_special_chars: &[char]) -> String {
+    let mut problems = vec![];
+    if name.starts_with(|c: char| c.is_ascii_digit()) {
+        problems.push("starts with a digit".to_string());
+    } else if name.starts_with('.') {
+        problems.push("starts with a period".to_string());
+    } else if !name.starts_with(|c: char| c.is_ascii_alphabetic() || c == '_') {
+        problems.push("must start with a letter or underscore".to_string());
+    }
+    let mut bad: Vec<char> = name
+        .chars()
+        .filter(|c| !(c.is_ascii_alphanumeric() || allowed_special_chars.contains(c)))
+        .collect();
+    bad.sort_unstable();
+    bad.dedup();
+    if !bad.is_empty() {
+        problems.push(format!(
+            "contains {}",
+            bad.iter()
+                .map(|c| format!("`{c}`"))
+                .collect::<Vec<_>>()
+                .join(" ")
+        ));
+    }
+    if name.len() >= 63 {
+        problems.push(format!("{} characters long (max 62)", name.len()));
+    }
+    problems.join("; ")
 }
 
 #[check(
@@ -99,36 +129,48 @@ fn valid_glyphnames(f: &Testable, context: &Context) -> CheckFnResult {
         }
     }
     if !badnames.is_empty() {
+        let mut badnames: Vec<String> = badnames.into_iter().collect();
+        badnames.sort();
         problems.push(Status::fail(
             "found-invalid-names",
             &format!(
-                "The following glyph names do not comply with naming conventions: {:}\n\n
-                A glyph name must be entirely comprised of characters
-                from the following set: A-Z a-z 0-9 .(period) _(underscore).
-                A glyph name must not start with a digit or period.
-                There are a few exceptions such as the special glyph '.notdef'.
-                The glyph names \"twocents\", \"a1\", and \"_\" are all valid,
-                while \"2cents\" and \".twocents\" are not.'",
-                Itertools::intersperse(badnames.into_iter(), ", ".to_string()).collect::<String>()
+                "Glyph names that break the naming rules ({}). A name may only use A-Z a-z 0-9, period and underscore, must not start with a digit or period (except '.notdef'), and must be under 63 characters.\n\n{}",
+                badnames.len(),
+                markdown_table(
+                    context,
+                    &["Glyph name", "Problem"],
+                    badnames
+                        .iter()
+                        .map(|n| vec![format!("`{n}`"), naming_problem(n, &allowed_special_chars)])
+                )
             ),
         ));
     }
     if !warnnames.is_empty() {
+        let mut warnnames: Vec<String> = warnnames.into_iter().collect();
+        warnnames.sort();
         problems.push(Status::warn(
             "legacy-long-names",
             &format!(
-                "The following glyph names are too long: {:?}",
-                Itertools::intersperse(warnnames.into_iter(), ", ".to_string()).collect::<String>()
+                "Glyph names longer than 31 characters, which some older software can't handle ({}):\n\n{}",
+                warnnames.len(),
+                markdown_table(
+                    context,
+                    &["Glyph name", "Length"],
+                    warnnames.iter().map(|n| vec![format!("`{n}`"), n.len().to_string()])
+                )
             ),
         ));
     }
     if !duplicates.is_empty() {
+        let mut duplicates: Vec<String> = duplicates.into_iter().collect();
+        duplicates.sort();
         problems.push(Status::fail(
             "duplicated-glyph-names",
             &format!(
-                "These glyph names occur more than once: {:?}",
-                Itertools::intersperse(duplicates.into_iter(), ", ".to_string())
-                    .collect::<String>()
+                "Glyph names used more than once ({}): {}",
+                duplicates.len(),
+                inline_list(context, duplicates.iter().map(|n| format!("`{n}`")))
             ),
         ));
     }

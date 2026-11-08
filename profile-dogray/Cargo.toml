@@ -18,6 +18,9 @@ google-fonts-glyphsets = { version = "1.1.0", git = "https://github.com/googlefo
 profile-adobe = { path = "../profile-adobe", package = "fontspector-profile-adobe" }
 profile-microsoft = { path = "../profile-microsoft", package = "fontspector-profile-microsoft" }
 unicode-normalization = "0.1"
+harfrust = { workspace = true }
+unicode-joining-type = "1.0.0"
+unicode-bidi-mirroring = "0.4.0"
 
 [lints]
 workspace = true

@@ -83,40 +83,65 @@ fn base_has_width(f: &Testable, context: &Context) -> CheckFnResult {
             if name == "NULL" {
                 continue;
             }
-            zero_width_bases.push(format!("{name} ({codepoint:?})"));
+            zero_width_bases.push(vec![
+                name,
+                codepoint
+                    .and_then(|cp| char::from_u32(*cp).map(|c| format!("`{c}` U+{cp:04X}")))
+                    .unwrap_or_default(),
+            ]);
         }
     }
     if !zero_width_bases.is_empty() {
         problems.push(Status::fail(
             "zero-width-bases",
             &format!(
-                "The following glyphs had zero advance width:\n\n{}",
-                bullet_list(context, zero_width_bases),
+                "Base glyphs (not marks in GDEF) with zero advance width ({}):\n\n{}",
+                zero_width_bases.len(),
+                markdown_table(context, &["Glyph", "Character"], zero_width_bases),
             ),
         ));
     }
 
     // Check 2: zero-width characters should have zero advance width
+    let mut wide = vec![];
+    let mut metadata = vec![];
     for &(codepoint, name) in ZERO_WIDTH_CHARS {
         if let Some(gid) = charmap.map(codepoint) {
             let advance = hmtx.advance(gid).unwrap_or(0);
             if advance != 0 {
                 let glyph_name = font.glyph_name_for_id_synthesise(gid);
-                let message =
-                    format!("U+{codepoint:04X} {name} has non-zero advance width: {advance}");
-                let mut status = Status::warn("non-zero-advance", &message);
-                status.add_metadata(Metadata::GlyphProblem {
+                wide.push(vec![
+                    format!("U+{codepoint:04X} {name}"),
+                    glyph_name.clone(),
+                    advance.to_string(),
+                ]);
+                metadata.push(Metadata::GlyphProblem {
                     glyph_name,
                     glyph_id: gid.to_u32(),
                     userspace_location: None,
                     position: None,
                     actual: Some(json!({ "advance_width": advance })),
                     expected: Some(json!({ "advance_width": 0 })),
-                    message,
+                    message: format!(
+                        "U+{codepoint:04X} {name} has non-zero advance width: {advance}"
+                    ),
                 });
-                problems.push(status);
             }
         }
+    }
+    if !wide.is_empty() {
+        let mut status = Status::warn(
+            "non-zero-advance",
+            &format!(
+                "Zero-width characters with an advance width, which should be 0 ({}):\n\n{}",
+                wide.len(),
+                markdown_table(context, &["Character", "Glyph", "Advance"], wide)
+            ),
+        );
+        for m in metadata {
+            status.add_metadata(m);
+        }
+        problems.push(status);
     }
 
     return_result(problems)

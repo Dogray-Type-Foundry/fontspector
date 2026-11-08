@@ -45,6 +45,10 @@ const AVG_CHAR_WEIGHTS: [(char, u32); 27] = [
         This check ensures that the value is correct. A failure here may indicate
         a bug in the font compiler, rather than something that the designer can
         do anything about.
+
+        A difference of a unit or two is reported only as INFO: font editors
+        calculate the value in slightly different ways. See
+        https://github.com/fonttools/fontbakery/issues/1622
     "
 )]
 fn xavgcharwidth(f: &Testable, _context: &Context) -> CheckFnResult {
@@ -58,7 +62,7 @@ fn xavgcharwidth(f: &Testable, _context: &Context) -> CheckFnResult {
             // Pass
         }
         1..=10 => {
-            let msg = format!("OS/2 xAvgCharWidth is {actual} but it should be {expected} which corresponds to {rule}. These are similar values, which may be a symptom of the slightly different calculation of the xAvgCharWidth value in font editors. There's further discussion on this at https://github.com/fonttools/fontbakery/issues/1622");
+            let msg = format!("xAvgCharWidth is **{actual}**; {rule} is **{expected}** (off by {difference}, close enough to be an editor rounding difference).");
             let mut status = Status::info("xAvgCharWidth-close", &msg);
             status.add_metadata(Metadata::TableProblem {
                 table_tag: "OS/2".to_string(),
@@ -70,7 +74,9 @@ fn xavgcharwidth(f: &Testable, _context: &Context) -> CheckFnResult {
             problems.push(status);
         }
         _ => {
-            let msg = format!("OS/2 xAvgCharWidth is {actual} but it should be {expected} which corresponds to {rule}. This may indicate a problem with the font editor or the font compiler.");
+            let msg = format!(
+                "xAvgCharWidth is **{actual}**; {rule} is **{expected}** (off by {difference})."
+            );
             let mut status = Status::warn("xAvgCharWidth-wrong", &msg);
             status.add_metadata(Metadata::TableProblem {
                 table_tag: "OS/2".to_string(),

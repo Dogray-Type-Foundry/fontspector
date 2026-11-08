@@ -112,7 +112,7 @@ fn explain(bit: u32, codepoints: &HashSet<u32>) -> String {
     if bit == 0 && !qualifies && supported_code_pages(codepoints).contains(&0) {
         parts.push("expected anyway: when no code page qualifies, Latin 1 is set so Word can still use the font".to_string());
     }
-    format!("{} ({})", codepage_name(bit), parts.join("; "))
+    parts.join("; ")
 }
 
 /// Share of a code page's characters present in the font.
@@ -130,11 +130,172 @@ fn coverage(ranges: &[(u32, u32)], codepoints: &HashSet<u32>) -> f64 {
 }
 
 fn codepage_name(bit: u32) -> String {
-    CODEPAGES.iter().find(|(b, _, _)| *b == bit).map_or_else(
-        || format!("bit {bit}"),
-        |(_, name, _)| format!("{bit} {name}"),
-    )
+    CODEPAGES
+        .iter()
+        .find(|(b, _, _)| *b == bit)
+        .map_or_else(|| "(reserved)".to_string(), |(_, name, _)| name.to_string())
 }
+
+fn unicode_range_name(bit: u32) -> &'static str {
+    UNICODE_RANGE_NAMES
+        .get(bit as usize)
+        .copied()
+        .unwrap_or("(reserved)")
+}
+
+/// How many of the font's characters fall in Unicode range bit `bit`.
+fn chars_in_range(bit: u32, codepoints: &HashSet<u32>) -> usize {
+    if bit == 57 {
+        // Non-Plane 0: any supplementary-plane character.
+        return codepoints.iter().filter(|cp| **cp > 0xFFFF).count();
+    }
+    codepoints
+        .iter()
+        .filter(|cp| {
+            UNICODE_RANGES
+                .iter()
+                .any(|(a, b, rbit)| *rbit == bit && (*a..=*b).contains(*cp))
+        })
+        .count()
+}
+
+fn yes_no(set: bool) -> &'static str {
+    if set {
+        "set"
+    } else {
+        "not set"
+    }
+}
+
+/// Names of the OS/2 Unicode range bits, by bit.
+///
+/// Generated from fontTools' OS2_UNICODE_RANGES.
+#[rustfmt::skip]
+const UNICODE_RANGE_NAMES: [&str; 123] = [
+    "Basic Latin", // 0
+    "Latin-1 Supplement", // 1
+    "Latin Extended-A", // 2
+    "Latin Extended-B", // 3
+    "IPA Extensions, Phonetic Extensions, Phonetic Extensions Supplement", // 4
+    "Spacing Modifier Letters, Modifier Tone Letters", // 5
+    "Combining Diacritical Marks, Combining Diacritical Marks Supplement", // 6
+    "Greek and Coptic", // 7
+    "Coptic", // 8
+    "Cyrillic, Cyrillic Supplement, Cyrillic Extended-A, Cyrillic Extended-B", // 9
+    "Armenian", // 10
+    "Hebrew", // 11
+    "Vai", // 12
+    "Arabic, Arabic Supplement", // 13
+    "NKo", // 14
+    "Devanagari", // 15
+    "Bengali", // 16
+    "Gurmukhi", // 17
+    "Gujarati", // 18
+    "Oriya", // 19
+    "Tamil", // 20
+    "Telugu", // 21
+    "Kannada", // 22
+    "Malayalam", // 23
+    "Thai", // 24
+    "Lao", // 25
+    "Georgian, Georgian Supplement", // 26
+    "Balinese", // 27
+    "Hangul Jamo", // 28
+    "Latin Extended Additional, Latin Extended-C, Latin Extended-D", // 29
+    "Greek Extended", // 30
+    "General Punctuation, Supplemental Punctuation", // 31
+    "Superscripts And Subscripts", // 32
+    "Currency Symbols", // 33
+    "Combining Diacritical Marks For Symbols", // 34
+    "Letterlike Symbols", // 35
+    "Number Forms", // 36
+    "Arrows, Supplemental Arrows-A, Supplemental Arrows-B, Miscellaneous Symbols and Arrows", // 37
+    "Mathematical Operators, Supplemental Mathematical Operators, Miscellaneous Mathematical Symbols-A, Miscellaneous Mathematical Symbols-B", // 38
+    "Miscellaneous Technical", // 39
+    "Control Pictures", // 40
+    "Optical Character Recognition", // 41
+    "Enclosed Alphanumerics", // 42
+    "Box Drawing", // 43
+    "Block Elements", // 44
+    "Geometric Shapes", // 45
+    "Miscellaneous Symbols", // 46
+    "Dingbats", // 47
+    "CJK Symbols And Punctuation", // 48
+    "Hiragana", // 49
+    "Katakana, Katakana Phonetic Extensions", // 50
+    "Bopomofo, Bopomofo Extended", // 51
+    "Hangul Compatibility Jamo", // 52
+    "Phags-pa", // 53
+    "Enclosed CJK Letters And Months", // 54
+    "CJK Compatibility", // 55
+    "Hangul Syllables", // 56
+    "Non-Plane 0", // 57
+    "Phoenician", // 58
+    "CJK Unified Ideographs, CJK Radicals Supplement, Kangxi Radicals, Ideographic Description Characters, CJK Unified Ideographs Extension A, CJK Unified Ideographs Extension B, Kanbun", // 59
+    "Private Use Area (plane 0)", // 60
+    "CJK Strokes, CJK Compatibility Ideographs, CJK Compatibility Ideographs Supplement", // 61
+    "Alphabetic Presentation Forms", // 62
+    "Arabic Presentation Forms-A", // 63
+    "Combining Half Marks", // 64
+    "Vertical Forms, CJK Compatibility Forms", // 65
+    "Small Form Variants", // 66
+    "Arabic Presentation Forms-B", // 67
+    "Halfwidth And Fullwidth Forms", // 68
+    "Specials", // 69
+    "Tibetan", // 70
+    "Syriac", // 71
+    "Thaana", // 72
+    "Sinhala", // 73
+    "Myanmar", // 74
+    "Ethiopic, Ethiopic Supplement, Ethiopic Extended", // 75
+    "Cherokee", // 76
+    "Unified Canadian Aboriginal Syllabics", // 77
+    "Ogham", // 78
+    "Runic", // 79
+    "Khmer, Khmer Symbols", // 80
+    "Mongolian", // 81
+    "Braille Patterns", // 82
+    "Yi Syllables, Yi Radicals", // 83
+    "Tagalog, Hanunoo, Buhid, Tagbanwa", // 84
+    "Old Italic", // 85
+    "Gothic", // 86
+    "Deseret", // 87
+    "Byzantine Musical Symbols, Musical Symbols, Ancient Greek Musical Notation", // 88
+    "Mathematical Alphanumeric Symbols", // 89
+    "Private Use (plane 15), Private Use (plane 16)", // 90
+    "Variation Selectors, Variation Selectors Supplement", // 91
+    "Tags", // 92
+    "Limbu", // 93
+    "Tai Le", // 94
+    "New Tai Lue", // 95
+    "Buginese", // 96
+    "Glagolitic", // 97
+    "Tifinagh", // 98
+    "Yijing Hexagram Symbols", // 99
+    "Syloti Nagri", // 100
+    "Linear B Syllabary, Linear B Ideograms, Aegean Numbers", // 101
+    "Ancient Greek Numbers", // 102
+    "Ugaritic", // 103
+    "Old Persian", // 104
+    "Shavian", // 105
+    "Osmanya", // 106
+    "Cypriot Syllabary", // 107
+    "Kharoshthi", // 108
+    "Tai Xuan Jing Symbols", // 109
+    "Cuneiform, Cuneiform Numbers and Punctuation", // 110
+    "Counting Rod Numerals", // 111
+    "Sundanese", // 112
+    "Lepcha", // 113
+    "Ol Chiki", // 114
+    "Saurashtra", // 115
+    "Kayah Li", // 116
+    "Rejang", // 117
+    "Cham", // 118
+    "Ancient Symbols", // 119
+    "Phaistos Disc", // 120
+    "Carian, Lycian, Lydian", // 121
+    "Domino Tiles, Mahjong Tiles", // 122
+];
 
 /// formed by .0..=.1; if it matches bit .2 should be set.
 ///
@@ -473,14 +634,15 @@ fn bits_of(words: &[u32]) -> HashSet<u32> {
         .collect()
 }
 
-fn describe(bits: &HashSet<u32>) -> String {
+/// "0 Latin 1, 1 Latin 2", or "none".
+fn describe_named(bits: &HashSet<u32>, name: fn(u32) -> String) -> String {
     let mut v: Vec<u32> = bits.iter().copied().collect();
     v.sort_unstable();
     if v.is_empty() {
         "none".to_string()
     } else {
         v.iter()
-            .map(|b| b.to_string())
+            .map(|b| format!("{b} {}", name(*b)))
             .collect::<Vec<_>>()
             .join(", ")
     }
@@ -532,53 +694,57 @@ fn os2_ranges_match_cmap(t: &Testable, context: &Context) -> CheckFnResult {
 
     let mut problems = vec![];
     if actual_code_pages != expected_code_pages {
-        let mut extra: Vec<u32> = actual_code_pages
-            .difference(&expected_code_pages)
+        let mut bits: Vec<u32> = actual_code_pages
+            .symmetric_difference(&expected_code_pages)
             .copied()
             .collect();
-        let mut missing: Vec<u32> = expected_code_pages
-            .difference(&actual_code_pages)
-            .copied()
-            .collect();
-        extra.sort_unstable();
-        missing.sort_unstable();
-        let list = |bits: &[u32]| {
-            if bits.is_empty() {
-                "none".to_string()
-            } else {
-                bits.iter()
-                    .map(|b| format!("\n  * {}", explain(*b, &codepoints)))
-                    .collect::<String>()
-            }
-        };
+        bits.sort_unstable();
         problems.push(Status::fail(
             "code-page-ranges-mismatch",
             &format!(
-                "OS/2 code-page bits do not match the characters the font supports. A code page counts as supported when the font has at least 92% of its characters, including its three identifying letters.\n\n* Declared: {}\n* Supported: {}\n* Set but not supported: {}\n* Supported but not set: {}",
-                describe(&actual_code_pages),
-                describe(&expected_code_pages),
-                list(&extra),
-                list(&missing),
+                "OS/2 code-page bits that don't match the characters the font supports ({}). A code page counts as supported when the font has at least 92% of its characters, including its three identifying letters.\n\n{}\n\nShould be set: {}.",
+                bits.len(),
+                markdown_table(
+                    context,
+                    &["Bit", "Code page", "Now", "Should be", "Why"],
+                    bits.iter().map(|bit| {
+                        vec![
+                            bit.to_string(),
+                            codepage_name(*bit),
+                            yes_no(actual_code_pages.contains(bit)).to_string(),
+                            yes_no(expected_code_pages.contains(bit)).to_string(),
+                            explain(*bit, &codepoints),
+                        ]
+                    })
+                ),
+                describe_named(&expected_code_pages, codepage_name),
             ),
         ));
     }
     if actual_unicode != expected_unicode {
-        let extra: HashSet<u32> = actual_unicode
-            .difference(&expected_unicode)
+        let mut bits: Vec<u32> = actual_unicode
+            .symmetric_difference(&expected_unicode)
             .copied()
             .collect();
-        let missing: HashSet<u32> = expected_unicode
-            .difference(&actual_unicode)
-            .copied()
-            .collect();
+        bits.sort_unstable();
         problems.push(Status::fail(
             "unicode-ranges-mismatch",
             &format!(
-                "OS/2 Unicode range bits do not match the cmap.\n\n* Declared: {}\n* Derived from cmap: {}\n* Set but not supported: {}\n* Supported but not set: {}",
-                describe(&actual_unicode),
-                describe(&expected_unicode),
-                describe(&extra),
-                describe(&missing),
+                "OS/2 Unicode range bits that don't match the cmap ({}). A bit should be set when the font has any character in its range.\n\n{}",
+                bits.len(),
+                markdown_table(
+                    context,
+                    &["Bit", "Unicode range", "Now", "Should be", "Characters in font"],
+                    bits.iter().map(|bit| {
+                        vec![
+                            bit.to_string(),
+                            unicode_range_name(*bit).to_string(),
+                            yes_no(actual_unicode.contains(bit)).to_string(),
+                            yes_no(expected_unicode.contains(bit)).to_string(),
+                            chars_in_range(*bit, &codepoints).to_string(),
+                        ]
+                    })
+                ),
             ),
         ));
     }

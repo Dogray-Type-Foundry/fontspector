@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::BTreeMap;
 
 use fontspector_checkapi::{prelude::*, testfont, FileTypeConvert};
 use itertools::Itertools;
@@ -36,50 +36,59 @@ const COMMON_WIDTH_MATH_CHARS: [char; 314] = [
     proposal = "https://github.com/fonttools/fontbakery/issues/3832",
     title = "Check math signs have the same width."
 )]
-fn math_signs_width(f: &Testable, _context: &Context) -> CheckFnResult {
+fn math_signs_width(f: &Testable, context: &Context) -> CheckFnResult {
     let font = testfont!(f);
     let charmap = font.font().charmap();
     let hmtx = font.font().hmtx()?;
-    let mut widths: HashMap<u16, HashSet<GlyphId>> = HashMap::new();
-    for (glyph, width) in COMMON_WIDTH_MATH_CHARS
+    // width -> (char, glyph), in the order of COMMON_WIDTH_MATH_CHARS
+    let mut widths: BTreeMap<u16, Vec<(char, GlyphId)>> = BTreeMap::new();
+    for (c, gid) in COMMON_WIDTH_MATH_CHARS
         .iter()
-        .flat_map(|c| charmap.map(*c as u32))
-        .map(|gid| (gid, hmtx.advance(gid).unwrap_or(0)))
+        .flat_map(|c| charmap.map(*c as u32).map(|gid| (*c, gid)))
     {
-        widths.entry(width).or_default().insert(glyph);
+        let width = hmtx.advance(gid).unwrap_or(0);
+        widths.entry(width).or_default().push((c, gid));
     }
-
-    let most_common_width = widths
-        .iter()
-        .max_by_key(|(_, glyphs)| glyphs.len())
-        .map(|(width, _)| *width);
-    if widths.len() == 1 {
+    if widths.len() <= 1 {
         return Ok(Status::just_one_pass());
     }
     let num_glyphs = widths.values().map(|g| g.len()).sum::<usize>();
-    if let Some(width) = most_common_width {
-        let summary = widths
-            .into_iter()
-            .filter(|(w, _)| *w != width)
-            .map(|(w, glyphs)| {
-                format!(
-                    "width={}: {}",
-                    w,
-                    glyphs
-                        .iter()
-                        .map(|gid| font.glyph_name_for_id_synthesise(*gid))
-                        .join(", ")
-                )
-            })
-            .collect::<Vec<_>>()
-            .join("\n");
-        return Ok(Status::just_one_warn(
-            "width-outliers",
-            &format!("The most common width is {width} among a set of {num_glyphs}  math glyphs.\nThe following math glyphs have a different width, though:\n{summary}")
-        ));
-    }
-    // No most common
-    return Ok(Status::just_one_pass());
+    let Some((common, common_count)) = widths
+        .iter()
+        .max_by_key(|(_, glyphs)| glyphs.len())
+        .map(|(width, glyphs)| (*width, glyphs.len()))
+    else {
+        return Ok(Status::just_one_pass());
+    };
+    let rows = widths.iter().map(|(width, glyphs)| {
+        let (label, diff) = if *width == common {
+            (format!("**{width}** (most common)"), "—".to_string())
+        } else {
+            (
+                width.to_string(),
+                format!("{:+}", i32::from(*width) - i32::from(common)),
+            )
+        };
+        let names = glyphs
+            .iter()
+            .map(|(c, gid)| format!("`{c}` {}", font.glyph_name_for_id_synthesise(*gid)))
+            .join(", ");
+        vec![label, diff, glyphs.len().to_string(), names]
+    });
+    Ok(Status::just_one_warn(
+        "width-outliers",
+        &format!(
+            "{} of the font's {num_glyphs} math signs are {common} units wide; {} {}.\n\n{}",
+            common_count,
+            num_glyphs - common_count,
+            if num_glyphs - common_count == 1 {
+                "differs"
+            } else {
+                "differ"
+            },
+            markdown_table(context, &["Width", "vs. common", "Glyphs", "Which"], rows)
+        ),
+    ))
 }
 
 #[cfg(test)]

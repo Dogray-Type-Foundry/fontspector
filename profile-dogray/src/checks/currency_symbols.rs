@@ -297,7 +297,8 @@ fn currency_symbols(t: &Testable, context: &Context) -> CheckFnResult {
             .get(id)
             .is_some_and(|bases| bases.iter().all(|c| codepoints.contains(&(*c as u32))))
     };
-    let mut problems = vec![];
+    let mut fails = vec![];
+    let mut warns = vec![];
     for currency in CURRENCIES {
         if codepoints.contains(&(currency.symbol as u32)) {
             continue;
@@ -312,27 +313,46 @@ fn currency_symbols(t: &Testable, context: &Context) -> CheckFnResult {
                 other_hits.insert(format!("{} ({})", language_name(id), c.name));
             }
         }
-        let symbol = format!(
-            "{} {} (U+{:04X})",
-            currency.symbol, currency.name, currency.symbol as u32
-        );
+        let row = |hits: BTreeSet<String>| {
+            vec![
+                format!("`{}`", currency.symbol),
+                currency.name.to_string(),
+                format!("U+{:04X}", currency.symbol as u32),
+                hits.into_iter().collect::<Vec<_>>().join(", "),
+            ]
+        };
         if !main_hits.is_empty() {
-            problems.push(Status::fail(
-                "missing-currency",
-                &format!(
-                    "Missing {symbol}. The font supports the principal language of a country using it: {}.",
-                    main_hits.into_iter().collect::<Vec<_>>().join(", ")
-                ),
-            ));
+            fails.push(row(main_hits));
         } else if !other_hits.is_empty() {
-            problems.push(Status::warn(
-                "missing-currency-official-language",
-                &format!(
-                    "Missing {symbol}. The font supports an official language of a country using it: {}.",
-                    other_hits.into_iter().collect::<Vec<_>>().join(", ")
-                ),
-            ));
+            warns.push(row(other_hits));
         }
+    }
+    let headers = [
+        "Symbol",
+        "Currency",
+        "Code point",
+        "Supported languages (country)",
+    ];
+    let mut problems = vec![];
+    if !fails.is_empty() {
+        problems.push(Status::fail(
+            "missing-currency",
+            &format!(
+                "Missing currency symbols of countries whose principal language the font supports ({}):\n\n{}",
+                fails.len(),
+                markdown_table(context, &headers, fails)
+            ),
+        ));
+    }
+    if !warns.is_empty() {
+        problems.push(Status::warn(
+            "missing-currency-official-language",
+            &format!(
+                "Missing currency symbols of countries where the font supports an official, but not the principal, language ({}):\n\n{}",
+                warns.len(),
+                markdown_table(context, &headers, warns)
+            ),
+        ));
     }
     return_result(problems)
 }

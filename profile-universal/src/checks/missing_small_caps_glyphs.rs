@@ -76,14 +76,36 @@ fn missing_small_caps_glyphs(t: &Testable, context: &Context) -> CheckFnResult {
         )?;
 
         if !glyphset.is_empty() {
+            let mut rows: Vec<(u32, GlyphId16)> = f
+                .font()
+                .charmap()
+                .mappings()
+                .filter_map(|(c, g)| GlyphId16::try_from(g).ok().map(|g| (c, g)))
+                .filter(|(_, g)| glyphset.contains(g))
+                .collect();
+            rows.sort_unstable();
+            rows.dedup_by_key(|(_, g)| *g);
             let mut status = Status::fail(
                 error_code,
                 &format!(
-                    "The following letters did not take part in {} substitutions:\n\n{}",
-                    feature,
-                    bullet_list(
+                    "{} letters with no '{feature}' substitution ({}):\n\n{}",
+                    if *feature == "smcp" {
+                        "Lowercase"
+                    } else {
+                        "Uppercase"
+                    },
+                    rows.len(),
+                    markdown_table(
                         context,
-                        glyphset.iter().map(|g| f.glyph_name_for_id_synthesise(*g))
+                        &["Character", "Glyph"],
+                        rows.iter().map(|(c, g)| {
+                            vec![
+                                char::from_u32(*c)
+                                    .map(|ch| format!("`{ch}` U+{c:04X}"))
+                                    .unwrap_or_default(),
+                                f.glyph_name_for_id_synthesise(*g),
+                            ]
+                        })
                     )
                 ),
             );

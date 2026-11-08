@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
+use super::font_sets;
 use fontspector_checkapi::{prelude::*, skip, testfont, FileTypeConvert, Metadata};
 use serde_json::json;
 use skrifa::{raw::TableProvider, string::StringId};
@@ -152,33 +153,25 @@ fn equal_codepoint_coverage(c: &TestableCollection, context: &Context) -> CheckF
     if groups.is_empty() {
         return Ok(Status::just_one_pass());
     }
-    let report: Vec<String> = groups
-        .iter()
-        .map(|(lacking, cps)| {
-            let shown: Vec<String> = cps
-                .iter()
-                .take(if context.full_lists { usize::MAX } else { 40 })
-                .map(|cp| format!("U+{cp:04X}"))
-                .collect();
-            let more = cps.len().saturating_sub(shown.len());
-            format!(
-                "Missing from {}: {} codepoint(s): {}{}",
-                lacking.join(", "),
-                cps.len(),
-                shown.join(", "),
-                if more > 0 {
-                    format!(" … and {more} more")
-                } else {
-                    String::new()
-                }
-            )
-        })
-        .collect();
+    let all_names: Vec<String> = per_font.iter().map(|(name, _)| name.clone()).collect();
+    let rows = groups.iter().map(|(lacking, cps)| {
+        vec![
+            font_sets::describe(lacking, &all_names),
+            cps.len().to_string(),
+            inline_list(
+                context,
+                cps.iter().map(|cp| {
+                    char::from_u32(*cp)
+                        .map_or(format!("U+{cp:04X}"), |c| format!("`{c}` U+{cp:04X}"))
+                }),
+            ),
+        ]
+    });
     Ok(Status::just_one_fail(
         "codepoint-coverage-differs",
         &format!(
-            "The fonts don't all cover the same codepoints:\n\n{}",
-            bullet_list(context, report)
+            "Characters that only some fonts of the family have:\n\n{}",
+            markdown_table(context, &["Missing from", "Count", "Characters"], rows)
         ),
     ))
 }

@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
+use fontspector_checkapi::StatusCode;
 use fontspector_checkapi::{prelude::*, skip, FileTypeConvert};
-use itertools::Itertools;
 use skrifa::raw::{types::FWord, TableProvider};
 
 #[check(
@@ -17,7 +17,7 @@ use skrifa::raw::{types::FWord, TableProvider};
     proposal = "https://github.com/fonttools/fontbakery/issues/4829",  // legacy check
     implementation = "all"
 )]
-fn underline_thickness(c: &TestableCollection, _context: &Context) -> CheckFnResult {
+fn underline_thickness(c: &TestableCollection, context: &Context) -> CheckFnResult {
     let fonts = TTF.from_collection(c);
     skip!(fonts.len() < 2, "no-siblings", "No sibling fonts found");
     let posts: Vec<(&PathBuf, FWord)> = fonts
@@ -32,17 +32,17 @@ fn underline_thickness(c: &TestableCollection, _context: &Context) -> CheckFnRes
             )
         })
         .collect();
-    Ok(if posts.iter().unique_by(|(_, t)| t).count() == 1 {
-        Status::just_one_pass()
-    } else {
-        let mut message =
-            "Underline thickness is inconsistent. Detected underline thickness values are:\n\n"
-                .to_string();
-        for (path, thickness) in posts {
-            message.push_str(&format!("* {}: {}\n", path.display(), thickness));
-        }
-        Status::just_one_fail("inconsistent-underline-thickness", &message)
-    })
+    let values: Vec<_> = posts
+        .into_iter()
+        .map(|(path, thickness)| (thickness, thickness, path.display().to_string()))
+        .collect();
+    assert_all_the_same(
+        context,
+        &values,
+        "inconsistent-underline-thickness",
+        "Underline thickness (post.underlineThickness) differs between fonts of the family.",
+        StatusCode::Fail,
+    )
 }
 
 #[allow(clippy::expect_used, clippy::unwrap_used)]

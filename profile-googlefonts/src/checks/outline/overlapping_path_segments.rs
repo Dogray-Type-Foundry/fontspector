@@ -1,9 +1,9 @@
 use hashbrown::HashSet;
 
-use fontspector_checkapi::{prelude::*, testfont, FileTypeConvert};
+use fontspector_checkapi::{prelude::*, testfont, FileTypeConvert, Metadata};
 use kurbo::ParamCurve;
 
-use crate::checks::outline::name_and_bezglyph;
+use crate::checks::outline::{name_and_bezglyph, seg_ends, seg_kind, seg_span};
 
 #[check(
     id = "overlapping_path_segments",
@@ -23,7 +23,7 @@ use crate::checks::outline::name_and_bezglyph;
 fn overlapping_path_segments(t: &Testable, context: &Context) -> CheckFnResult {
     let f = testfont!(t);
     let mut all_warnings = vec![];
-    for (name, result) in name_and_bezglyph(&f) {
+    for (glyph_id, (name, result)) in name_and_bezglyph(&f).enumerate() {
         let mut seen = HashSet::new();
         let pen = result?;
         for contour in pen.iter() {
@@ -43,25 +43,44 @@ fn overlapping_path_segments(t: &Testable, context: &Context) -> CheckFnResult {
                     start.y.to_bits(),
                 ];
                 if seen.contains(&normal) || seen.contains(&flipped) {
-                    all_warnings.push(format!(
-                        "{name}: {seg:?} has the same coordinates as a previous segment."
-                    ));
+                    all_warnings.push((name.clone(), glyph_id as u32, seg));
                 }
                 seen.insert(normal);
             }
         }
     }
-    Ok(if !all_warnings.is_empty() {
-        Status::just_one_warn(
-            "overlapping-path-segments",
-            &format!(
-                "The following glyphs have overlapping path segments:\n\n{}",
-                bullet_list(context, all_warnings)
-            ),
-        )
-    } else {
-        Status::just_one_pass()
-    })
+    if all_warnings.is_empty() {
+        return Ok(Status::just_one_pass());
+    }
+    let mut status = Status::warn(
+        "overlapping-path-segments",
+        &format!(
+            "Segments lying exactly on top of an earlier segment of the same glyph ({}):\n\n{}",
+            all_warnings.len(),
+            markdown_table(
+                context,
+                &["Glyph", "Segment", "Kind"],
+                all_warnings.iter().map(|(name, _, seg)| vec![
+                    name.clone(),
+                    seg_span(seg),
+                    seg_kind(seg).to_string()
+                ])
+            )
+        ),
+    );
+    for (glyph_name, glyph_id, seg) in all_warnings {
+        let (start, _) = seg_ends(&seg);
+        status.add_metadata(Metadata::GlyphProblem {
+            glyph_name,
+            glyph_id,
+            position: Some((start.x as f32, start.y as f32)),
+            message: "Overlapping segment".to_string(),
+            actual: None,
+            expected: None,
+            userspace_location: None,
+        });
+    }
+    Ok(Box::new(vec![status].into_iter()))
 }
 
 #[cfg(test)]

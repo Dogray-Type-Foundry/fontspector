@@ -1,5 +1,5 @@
-use super::name_and_bezglyph;
-use fontspector_checkapi::{prelude::*, testfont, FileTypeConvert};
+use super::{name_and_bezglyph, pt};
+use fontspector_checkapi::{prelude::*, testfont, FileTypeConvert, Metadata};
 use kurbo::{Rect, Shape};
 
 // Although this check is per-glyph, the problem of contours being oriented
@@ -38,14 +38,16 @@ fn direction(t: &Testable, context: &Context) -> CheckFnResult {
     };
     let mut problems = vec![];
     let mut all_warnings = vec![];
-    for (name, result) in name_and_bezglyph(&f) {
+    for (glyph_id, (name, result)) in name_and_bezglyph(&f).enumerate() {
         let pen = result?;
         let bounds: Vec<Rect> = pen.iter().map(|path| path.bounding_box()).collect();
         let mut is_within = vec![vec![]; bounds.len()];
         for (i, my_bounds) in bounds.iter().enumerate() {
             if my_bounds.is_zero_area() {
-                all_warnings.push(format!(
-                    "{name} has a path with no bounds (probably a single point)"
+                all_warnings.push((
+                    name.clone(),
+                    glyph_id as u32,
+                    "contour has no area (probably a stray single point)".to_string(),
                 ));
                 continue;
             }
@@ -67,18 +69,46 @@ fn direction(t: &Testable, context: &Context) -> CheckFnResult {
             #[allow(clippy::indexing_slicing)]
             // is_within is initialized with the same length as bounds
             if is_within[i].is_empty() && direction_is_wrong(path) {
-                all_warnings.push(format!("{name} has a {wrong_direction} outer contour"));
+                let start = path
+                    .elements()
+                    .first()
+                    .and_then(|el| el.end_point())
+                    .map(pt)
+                    .unwrap_or_default();
+                all_warnings.push((
+                    name.clone(),
+                    glyph_id as u32,
+                    format!("{wrong_direction} outer contour starting at {start}"),
+                ));
             }
         }
     }
     if !all_warnings.is_empty() {
-        problems.push(Status::warn(
+        let mut status = Status::warn(
             "ccw-outer-contour", // Keep status code for compat, even though we detect cw outer contours in CFF fonts
             &format!(
-                "The following glyphs have a {wrong_direction} outer contour:\n\n{}",
-                bullet_list(context, all_warnings)
+                "Contours running the wrong way; outer contours in {} fonts must not be {wrong_direction} ({}):\n\n{}",
+                if is_ttf { "TrueType" } else { "CFF" },
+                all_warnings.len(),
+                markdown_table(
+                    context,
+                    &["Glyph", "Problem"],
+                    all_warnings.iter().map(|(name, _, problem)| vec![name.clone(), problem.clone()])
+                )
             ),
-        ));
+        );
+        for (glyph_name, glyph_id, problem) in all_warnings {
+            status.add_metadata(Metadata::GlyphProblem {
+                glyph_name,
+                glyph_id,
+                position: None,
+                message: problem,
+                actual: None,
+                expected: None,
+                userspace_location: None,
+            });
+        }
+        problems.push(status);
     }
 
     return_result(problems)
@@ -101,10 +131,13 @@ mod tests {
             StatusCode::Warn,
             Some("ccw-outer-contour".to_string()),
         );
-        assert_messages_contain(&results, "A (U+0041) has a counter-clockwise outer contour");
         assert_messages_contain(
             &results,
-            "x (U+0078) has a path with no bounds (probably a single point)",
+            "| A (U+0041) | counter-clockwise outer contour starting at",
+        );
+        assert_messages_contain(
+            &results,
+            "| x (U+0078) | contour has no area (probably a stray single point) |",
         );
 
         let testable = test_able("wonky_paths/OutlineTest.ttf");

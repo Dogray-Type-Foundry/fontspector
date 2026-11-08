@@ -1,4 +1,4 @@
-use crate::checks::outline::name_and_bezglyph;
+use crate::checks::outline::{name_and_bezglyph, num, seg_kind, seg_span};
 use fontspector_checkapi::{prelude::*, skip, testfont, FileTypeConvert, Metadata};
 use kurbo::{ParamCurveArclen, PathSeg, Point, Shape};
 use serde_json::json;
@@ -33,16 +33,6 @@ struct ShortSegmentWarning {
     segment: PathSeg,
     segment_length: f64,
     total_outline_length: f64,
-}
-
-impl std::fmt::Display for ShortSegmentWarning {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{} contains a short segment {:?} (length: {:.2}, total outline: {:.2})",
-            self.glyph_name, self.segment, self.segment_length, self.total_outline_length
-        )
-    }
 }
 
 #[check(
@@ -100,8 +90,21 @@ fn short_segments(t: &Testable, context: &Context) -> CheckFnResult {
         let mut status = Status::warn(
             "found-short-segments",
             &format!(
-                "The following glyphs have short segments:\n\n{}",
-                bullet_list(context, all_warnings.iter().map(|w| w.to_string()))
+                "Segments that are very short compared with their contour ({}):\n\n{}",
+                all_warnings.len(),
+                markdown_table(
+                    context,
+                    &["Glyph", "Segment", "Kind", "Length", "Contour length"],
+                    all_warnings.iter().map(|w| {
+                        vec![
+                            w.glyph_name.clone(),
+                            seg_span(&w.segment),
+                            seg_kind(&w.segment).to_string(),
+                            num(w.segment_length),
+                            num(w.total_outline_length),
+                        ]
+                    })
+                )
             ),
         );
         for warning in all_warnings {
@@ -142,10 +145,7 @@ mod tests {
             StatusCode::Warn,
             Some("found-short-segments".to_string()),
         );
-        assert_messages_contain(
-            &results,
-            "D (U+0044) contains a short segment Line(Line { p0: (180.0, 68.0)",
-        );
+        assert_messages_contain(&results, "| D (U+0044) | (180, 68) →");
 
         let testable = test_able("source-sans-pro/VAR/SourceSansVariable-Roman.otf");
         let results = run_check(super::short_segments, testable);

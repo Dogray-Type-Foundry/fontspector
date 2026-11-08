@@ -59,62 +59,63 @@ const CASE_MAPPING_EXCEPTIONS: [u32; 22] = [
 )]
 fn case_mapping(t: &Testable, context: &Context) -> CheckFnResult {
     let f = testfont!(t);
-    let mut problems = vec![];
-    let mut missing_counterparts_table = vec![];
     let codepoints = f.codepoints(Some(context));
-    for codepoint in codepoints.iter() {
-        if CASE_MAPPING_EXCEPTIONS.contains(codepoint) {
+    let mut sorted: Vec<u32> = codepoints.iter().copied().collect();
+    sorted.sort_unstable();
+    let name = |c: char| unicode_names2::name(c).map_or("Unknown".to_string(), |s| s.to_string());
+    let mut rows = vec![];
+    let mut metadata = vec![];
+    for codepoint in sorted {
+        if CASE_MAPPING_EXCEPTIONS.contains(&codepoint) {
             continue;
         }
-        if let Some(c) = char::from_u32(*codepoint)
+        let Some(c) = char::from_u32(codepoint)
             .filter(|c| matches!(c.general_category_group(), GeneralCategoryGroup::Letter))
-        {
-            if let Some(swapped) = swapcase(&c) {
-                if !codepoints.contains(&(swapped as u32)) {
-                    let have = format!(
-                        "U+{:04X}: {}",
-                        codepoint,
-                        unicode_names2::name(c)
-                            .map(|s| s.to_string())
-                            .unwrap_or("Unknown".to_string()),
-                    );
-                    let have_not = format!(
-                        "U+{:04X}: {}",
-                        swapped as u32,
-                        unicode_names2::name(swapped)
-                            .map(|s| s.to_string())
-                            .unwrap_or("Unknown".to_string()),
-                    );
-                    missing_counterparts_table.push(vec![have.clone(), have_not.clone()]);
-
-                    // Add glyph-level metadata for this missing case counterpart
-                    let glyph = f
-                        .font()
-                        .charmap()
-                        .map(*codepoint)
-                        .unwrap_or(GlyphId::new(0));
-
-                    let message =
-                        format!("Missing case-swapping counterpart for U+{:04X}", codepoint);
-                    let mut status = Status::fail("missing-case-counterparts", &message);
-                    status.add_metadata(Metadata::GlyphProblem {
-                        glyph_name: f.glyph_name_for_id_synthesise(glyph),
-                        glyph_id: glyph.to_u32(),
-                        userspace_location: None,
-                        position: None,
-                        actual: Some(json!(format!("U+{:04X}", codepoint))),
-                        expected: Some(json!(format!(
-                            "U+{:04X} (case counterpart)",
-                            swapped as u32
-                        ))),
-                        message: message.clone(),
-                    });
-                    problems.push(status);
-                }
-            }
+        else {
+            continue;
+        };
+        let Some(swapped) = swapcase(&c) else {
+            continue;
+        };
+        if codepoints.contains(&(swapped as u32)) {
+            continue;
         }
+        let glyph = f.font().charmap().map(codepoint).unwrap_or(GlyphId::new(0));
+        let glyph_name = f.glyph_name_for_id_synthesise(glyph);
+        rows.push(vec![
+            format!("`{c}` U+{codepoint:04X} {}", name(c)),
+            glyph_name.clone(),
+            format!("`{swapped}` U+{:04X} {}", swapped as u32, name(swapped)),
+        ]);
+        let message = format!("Missing case-swapping counterpart for U+{codepoint:04X}");
+        metadata.push(Metadata::GlyphProblem {
+            glyph_name,
+            glyph_id: glyph.to_u32(),
+            userspace_location: None,
+            position: None,
+            actual: Some(json!(format!("U+{codepoint:04X}"))),
+            expected: Some(json!(format!(
+                "U+{:04X} (case counterpart)",
+                swapped as u32
+            ))),
+            message,
+        });
     }
-    return_result(problems)
+    if rows.is_empty() {
+        return Ok(Status::just_one_pass());
+    }
+    let mut status = Status::fail(
+        "missing-case-counterparts",
+        &format!(
+            "Letters without their other-case counterpart ({}):\n\n{}",
+            rows.len(),
+            markdown_table(context, &["Has", "Glyph", "Missing"], rows)
+        ),
+    );
+    for m in metadata {
+        status.add_metadata(m);
+    }
+    Ok(Box::new(vec![status].into_iter()))
 }
 
 #[cfg(test)]

@@ -1,4 +1,4 @@
-use super::name_and_bezglyph;
+use super::{name_and_bezglyph, num, seg_ends, seg_span};
 use crate::checks::outline::close_but_not_on;
 use fontspector_checkapi::{prelude::*, skip, testfont, FileTypeConvert, Metadata};
 use kurbo::{PathSeg, Point};
@@ -18,16 +18,6 @@ struct SemiVerticalWarning {
     segment: PathSeg,
     actual_angle: f64,
     expected_angle: f64,
-}
-
-impl std::fmt::Display for SemiVerticalWarning {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}: {:?} (angle: {:.2} degrees, expected: {:.2} degrees)",
-            self.glyph_name, self.segment, self.actual_angle, self.expected_angle
-        )
-    }
 }
 
 #[check(
@@ -84,8 +74,27 @@ fn semi_vertical(t: &Testable, context: &Context) -> CheckFnResult {
         let mut status = Status::warn(
             "found-semi-vertical",
             &format!(
-                "The following glyphs have semi-vertical/semi-horizontal lines:\n\n{}",
-                bullet_list(context, all_warnings.iter().map(|w| w.to_string()))
+                "Lines that are almost, but not exactly, horizontal or vertical ({}):\n\n{}",
+                all_warnings.len(),
+                markdown_table(
+                    context,
+                    &["Glyph", "Line", "Off by", "Should be"],
+                    all_warnings.iter().map(|w| {
+                        let (a, b) = seg_ends(&w.segment);
+                        let horizontal = w.expected_angle.abs() != 90.0;
+                        let off = if horizontal { b.y - a.y } else { b.x - a.x };
+                        vec![
+                            w.glyph_name.clone(),
+                            seg_span(&w.segment),
+                            format!(
+                                "{:.2}° ({} units)",
+                                (w.actual_angle - w.expected_angle).abs(),
+                                num(off.abs())
+                            ),
+                            if horizontal { "horizontal" } else { "vertical" }.to_string(),
+                        ]
+                    })
+                )
             ),
         );
         for warning in all_warnings {
